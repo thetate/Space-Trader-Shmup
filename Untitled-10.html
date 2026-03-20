@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Trader Shmup - Beta Build</title>
+    <style>
+        body { margin: 0; background: #020208; color: #fff; font-family: monospace; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        #game-container { position: relative; width: 800px; height: 600px; border: 1px solid rgba(0, 255, 255, 0.3); box-shadow: 0 0 20px rgba(0, 255, 255, 0.1), inset 0 0 20px rgba(0, 255, 255, 0.1); background: #020208; overflow: hidden; }
+        
+        #gameCanvas { display: block; position: absolute; top:0; left:0; z-index: 1;}
+        
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 15px; box-sizing: border-box; background: rgba(2, 2, 8, 0.95); display: flex; flex-direction: column; text-shadow: 0 0 4px currentColor; z-index: 10;}
+        .hidden { display: none !important; }
+        
+        h1, h2, h3, h4 { letter-spacing: 2px; text-transform: uppercase; margin-top: 0;}
+        h1 { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor; }
+        h2 { text-shadow: 0 0 8px currentColor; }
+        h3 { border-bottom: 1px solid currentColor; box-shadow: 0 8px 8px -8px currentColor; padding-bottom: 5px; text-shadow: 0 0 5px currentColor; margin-bottom: 10px;}
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.5); border-left: 1px solid rgba(0, 255, 255, 0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 255, 255, 0.6); box-shadow: 0 0 10px #0ff; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #0ff; box-shadow: 0 0 15px #0ff; }
+
+        .layout-grid { display: flex; gap: 15px; height: 350px; }
+        .column { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding-right: 10px; }
+        
+        button { background: transparent; color: #0f0; border: 1px solid #0f0; box-shadow: 0 0 5px #0f0, inset 0 0 5px #0f0; text-shadow: 0 0 5px #0f0; padding: 4px 8px; cursor: pointer; font-family: monospace; font-size: 12px; margin-left: 2px; transition: all 0.1s; text-transform: uppercase; font-weight: bold;}
+        button:hover { background: #0f0; color: #000; text-shadow: none; box-shadow: 0 0 15px #0f0; }
+        button.sell { color: #f00; border-color: #f00; box-shadow: 0 0 5px #f00, inset 0 0 5px #f00; text-shadow: 0 0 5px #f00; }
+        button.sell:hover { background: #f00; color: #000; text-shadow: none; box-shadow: 0 0 15px #f00; }
+        button.upg { color: #0ff; border-color: #0ff; box-shadow: 0 0 5px #0ff, inset 0 0 5px #0ff; text-shadow: 0 0 5px #0ff; }
+        button.upg:hover { background: #0ff; color: #000; text-shadow: none; box-shadow: 0 0 15px #0ff; }
+        button.eqp { color: #f0f; border-color: #f0f; box-shadow: 0 0 5px #f0f, inset 0 0 5px #f0f; text-shadow: 0 0 5px #f0f; padding: 8px 16px; font-size: 14px;}
+        button.eqp:hover { background: #f0f; color: #000; text-shadow: none; box-shadow: 0 0 15px #f0f; }
+        button:disabled { border-color: #444 !important; color: #555 !important; box-shadow: none !important; text-shadow: none !important; cursor: not-allowed; background: transparent !important;}
+        
+        button:focus, .faction-tab:focus, summary:focus, .intercom-box:focus { outline: 2px solid #fff !important; outline-offset: 2px; transform: scale(1.02); z-index: 10; position: relative; box-shadow: 0 0 20px #fff, inset 0 0 10px #fff !important;}
+        
+        .terminal-table { display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap: 5px; font-size: 12px; margin-bottom: 5px; align-items: center; background: rgba(0, 20, 30, 0.4); padding: 5px; border-left: 2px solid rgba(0,255,255,0.3); }
+        .terminal-table:hover { background: rgba(0, 40, 60, 0.6); border-left: 2px solid #0ff;}
+        .terminal-header { font-weight: bold; color: #0ff; border-bottom: 1px solid rgba(0,255,255,0.3); padding-bottom: 5px; margin-bottom: 10px; }
+        .upgrade-item { margin: 5px 0; padding: 8px; border: 1px solid rgba(255, 0, 255, 0.4); box-shadow: inset 0 0 10px rgba(255, 0, 255, 0.1); background: rgba(40, 0, 40, 0.4); display: flex; justify-content: space-between; align-items: center; font-size: 13px;}
+        
+        .tab-container { display: flex; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid rgba(0, 255, 255, 0.3); padding-bottom: 10px; box-shadow: 0 5px 5px -5px rgba(0,255,255,0.2);}
+        .faction-tab { flex: 1; padding: 10px; background: rgba(0, 0, 0, 0.6); border: 1px solid #444; text-align: center; cursor: pointer; transition: 0.2s; color: #888; }
+        .faction-tab:hover { border-color: #0ff; color: #0ff; box-shadow: 0 0 10px rgba(0,255,255,0.3); text-shadow: 0 0 5px #0ff; }
+        .faction-tab.active { background: rgba(0, 40, 40, 0.6); border-color: #0ff; color: #fff; box-shadow: 0 0 15px #0ff, inset 0 0 10px #0ff; text-shadow: 0 0 5px #0ff; }
+        .faction-tab.locked { opacity: 0.4; cursor: not-allowed; background: #000; border-color: #333; box-shadow: none; text-shadow: none;}
+        
+        #cart-panel { background: rgba(0, 20, 30, 0.8); border: 1px solid #0ff; padding: 15px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 0 15px rgba(0,255,255,0.2), inset 0 0 10px rgba(0,255,255,0.1); }
+        #hud { position: absolute; top: 10px; left: 10px; pointer-events: none; font-size: 14px; background: rgba(2, 2, 8, 0.85); padding: 15px; border: 1px solid rgba(0, 255, 255, 0.5); box-shadow: 0 0 15px rgba(0,255,255,0.3), inset 0 0 10px rgba(0,255,255,0.2); border-radius: 4px; text-shadow: 0 0 4px currentColor; color: #fff; z-index: 50;}
+        #hud span { text-shadow: 0 0 8px currentColor; font-weight: bold; }
+
+        #map-wrapper { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 600px; height: 500px; margin: 0 auto; }
+        .map-node { background: rgba(0, 0, 0, 0.8); border: 1px solid #444; color: #555; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: 0.2s; padding: 10px; position: relative;}
+        .map-node.current { border-color: #0ff; color: #0ff; box-shadow: 0 0 20px #0ff, inset 0 0 15px rgba(0,255,255,0.4); text-shadow: 0 0 5px #0ff; background: rgba(0, 40, 60, 0.6); }
+        .map-node.adjacent { border-color: #0f0; color: #fff; cursor: pointer; box-shadow: 0 0 15px #0f0, inset 0 0 10px rgba(0,255,0,0.3); text-shadow: 0 0 5px #0f0; background: rgba(0, 30, 0, 0.6); }
+        .map-node.adjacent:hover { background: rgba(0, 60, 0, 0.8); transform: scale(1.05); box-shadow: 0 0 25px #0f0, inset 0 0 20px rgba(0,255,0,0.5); text-shadow: 0 0 10px #0f0; }
+
+        .intercom-wrapper { display: flex; gap: 20px; height: 400px; margin-top: 20px;}
+        .intercom-box { flex: 1; border: 1px solid #555; background: rgba(0,0,0,0.8); padding: 20px; display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; transition: 0.2s;}
+        .intercom-box:hover { background: rgba(20,20,20,0.9); transform: scale(1.02); }
+        
+        /* FIX: Made canvas block and relative so it doesn't break out of the flex container */
+        .avatar-canvas { width: 150px; height: 150px; border: 2px solid currentColor; box-shadow: 0 0 20px currentColor, inset 0 0 20px currentColor; border-radius: 50%; margin: 10px auto; background: rgba(0,0,0,0.5); display: block; position: relative;}
+        
+        .dialog-text { font-style: italic; margin-bottom: 20px; min-height: 60px; color: #ccc;}
+        
+        .diff-btn { padding: 20px; font-size: 18px; width: 250px; margin: 15px; cursor: pointer; font-family: monospace; font-weight: bold; background: transparent;}
+        .rep-good { color: #0f0; text-shadow: 0 0 5px #0f0; } .rep-bad { color: #f00; text-shadow: 0 0 5px #f00; } .rep-neu { color: #aaa; text-shadow: 0 0 5px #aaa; }
+        
+        #dev-panel { width: 550px; background: rgba(5, 5, 5, 0.9); padding: 20px; border: 1px solid #0f0; box-shadow: 0 0 20px rgba(0,255,0,0.3), inset 0 0 15px rgba(0,255,0,0.1); max-height: 80vh; overflow-y: auto; }
+        .dev-label { color: #0f0; display: inline-block; width: 200px; font-weight: bold; font-size: 12px; text-shadow: 0 0 5px #0f0;}
+        .dev-row { margin-bottom: 10px; display: flex; align-items: center; }
+        .dev-val { color: #fff; width: 40px; text-align: right; display: inline-block; font-size: 12px; text-shadow: 0 0 5px #fff;}
+        details { background: rgba(0, 20, 0, 0.3); margin-bottom: 10px; border: 1px solid rgba(0, 255, 0, 0.3); box-shadow: inset 0 0 10px rgba(0,255,0,0.1);}
+        summary { padding: 10px; background: rgba(0, 40, 0, 0.5); cursor: pointer; font-weight: bold; color: #0f0; outline: none; text-shadow: 0 0 5px #0f0;}
+        .details-content { padding: 15px; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div id="difficulty-layer" class="overlay" style="justify-content: center; align-items: center; z-index: 100;">
+        <h1 style="color: #0ff; font-size: 48px; margin-bottom: 5px; text-shadow: 0 0 15px #0ff, 0 0 30px #0ff;">SPACE TRADER SHMUP</h1>
+        <p style="color: #aaa; margin-bottom: 40px; text-align: center; max-width: 500px; text-shadow: 0 0 5px #aaa;">Your starting reputation dictates market prices and enemy hostility.<br>Use Mouse or Arrow Keys to navigate.</p>
+        <div style="display: flex; flex-direction: column; align-items: center;">
+            <button class="diff-btn" data-nav-id="diff-easy" style="color: #0f0; border-color: #0f0; box-shadow: 0 0 15px #0f0, inset 0 0 10px #0f0; text-shadow: 0 0 10px #0f0;" onclick="startGame(-10)">EASY (Rep: -10)</button>
+            <button class="diff-btn" data-nav-id="diff-med" style="color: #ff0; border-color: #ff0; box-shadow: 0 0 15px #ff0, inset 0 0 10px #ff0; text-shadow: 0 0 10px #ff0;" onclick="startGame(-30)">MEDIUM (Rep: -30)</button>
+            <button class="diff-btn" data-nav-id="diff-hard" style="color: #f00; border-color: #f00; box-shadow: 0 0 15px #f00, inset 0 0 10px #f00; text-shadow: 0 0 10px #f00;" onclick="startGame(-50)">HARD (Rep: -50)</button>
+        </div>
+    </div>
+
+    <div id="arrival-layer" class="overlay hidden" style="justify-content: center;">
+        <h2 style="text-align: center; color: #0ff; margin-bottom: 0;">SECTOR ARRIVAL INTERCOM</h2>
+        <p style="text-align: center; color: #aaa;">Incoming transmissions from local authorities...</p>
+        <div class="intercom-wrapper" id="intercom-container"></div>
+    </div>
+    
+    <div id="hud" class="hidden">
+        <div style="font-size: 16px; margin-bottom: 5px;">HP: <span id="hud-hp" style="color:#f00;"></span>/<span id="hud-maxhp" style="color:#f00;"></span> | Cargo: <span id="hud-cargo"></span> | Time: <span id="hud-time" style="color:#0ff;"></span> | $: <span id="hud-cash" style="color:#0f0;"></span></div>
+        <div style="color: #ff0; font-size: 15px;">Wpn: <span id="hud-weapon" style="color:#fff;">Std</span> (<span id="hud-ammo" style="color:#fff;"></span>)</div>
+        <div style="margin-bottom: 10px; color: #aaa; font-size: 11px;">[3]Std [4]Brst [5]Sprd [6]Lzr [7]Chrm [8]Rad [9]Home [0]Grow</div>
+        <div style="color: #0ff; font-size: 13px;">[1] Shield (<span id="hud-shield" style="color:#fff;"></span>) | <span style="color: #f0f;">[2] Bomb (<span id="hud-bomb" style="color:#fff;"></span>)</span> | <span style="color: #0f0;">[H] Heal (<span id="hud-repair" style="color:#fff;"></span>)</span></div>
+    </div>
+
+    <div id="map-layer" class="overlay hidden" style="justify-content: center;">
+        <h2 style="text-align: center; margin-bottom: 10px; color: #0ff; text-shadow: 0 0 15px #0ff;">NAVIGATION COMPUTER</h2>
+        <p style="text-align: center; color: #aaa; margin-top: 0; margin-bottom: 25px;">Select an adjacent sector to initiate slipspace jump.</p>
+        <div id="map-wrapper"></div>
+        <button data-nav-id="btn-cancel-map" class="sell" style="margin-top: 30px; padding: 15px; font-size: 16px; width: 400px; align-self: center;" onclick="cancelMap()">CANCEL JUMP (RETURN TO HUB)</button>
+    </div>
+
+    <div id="ui-layer" class="overlay hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div><h2 style="margin: 0;"><span id="market-loc" style="color: #0ff;">Nexus Hub</span> - Day <span id="market-day" style="color:#fff;">1</span></h2></div>
+            <h2 style="margin: 0; color: #0f0;">$<span id="market-cash" style="color:#fff;">500</span> | Cargo: <span id="market-cargo" style="color:#fff;">0</span>/<span id="market-maxcargo" style="color:#fff;">100</span></h2>
+        </div>
+        
+        <div class="tab-container" id="faction-tabs"></div>
+
+        <div class="layout-grid">
+            <div class="column">
+                <h3 style="color: #0ff;">Market Terminal</h3>
+                <div class="terminal-table terminal-header">
+                    <div>COMMODITY</div><div>PRICE (BASE)</div><div>INVENTORY</div><div>ACTION</div>
+                </div>
+                <div id="market-items"></div>
+            </div>
+            <div class="column">
+                <h3 style="color: #f0f;">Shipyard Upgrades</h3>
+                <div id="upgrade-items"></div>
+            </div>
+        </div>
+
+        <div id="cart-panel">
+            <div><strong style="color:#0ff;">Pending Manifest:</strong> Net Cash <span id="cart-net-cash" style="font-weight:bold; font-size: 16px;">$0</span> | Net Cargo <span id="cart-net-cargo" style="font-weight:bold; font-size: 16px;">0</span></div>
+            <div>
+                <button data-nav-id="btn-clear" class="sell" onclick="clearCart()">Clear Cart</button>
+                <button data-nav-id="btn-submit" class="upg" style="padding: 8px 16px; font-size: 14px;" onclick="submitCart()">Submit Trade</button>
+            </div>
+        </div>
+        <button data-nav-id="btn-map" style="margin-top: 15px; padding: 12px; font-size: 16px; width: 100%; color: #0ff; border-color: #0ff; box-shadow: 0 0 10px #0ff, inset 0 0 10px #0ff;" onclick="openMap()">PLOT COURSE (OPEN MAP)</button>
+    </div>
+
+    <div id="pause-layer" class="overlay hidden" style="background: rgba(2, 2, 8, 0.95); justify-content: center; align-items: center;">
+        <h2 style="color: #ff0; font-size: 32px; text-shadow: 0 0 15px #ff0, 0 0 30px #ff0;">TACTICAL PAUSE ACTIVE</h2>
+        <div style="width: 450px; background: rgba(0, 0, 0, 0.8); padding: 20px; border: 1px solid rgba(255, 255, 0, 0.5); box-shadow: 0 0 20px rgba(255, 255, 0, 0.2), inset 0 0 15px rgba(255, 255, 0, 0.1);">
+            <h3 style="margin-top: 0; color: #ff0;">Ship Inventory</h3>
+            <div id="pause-items"></div>
+            <button data-nav-id="btn-resume-pause" style="margin-top: 20px; padding: 12px; width: 100%; font-size: 16px; color: #ff0; border-color: #ff0; box-shadow: 0 0 10px #ff0, inset 0 0 10px #ff0;" onclick="togglePause()">RESUME COMBAT</button>
+        </div>
+    </div>
+    
+    <div id="dev-layer" class="overlay hidden" style="background: rgba(0,25,0,0.95); z-index: 200; justify-content: center; align-items: center;">
+        <h2 style="color: #0f0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; margin-top:0;">Developer Console</h2>
+        <div id="dev-panel">
+            <div id="dev-content-injector"></div>
+            <button data-nav-id="btn-resume-dev" style="margin-top: 20px; padding: 12px; width: 100%; font-size: 16px; color: #0f0; border-color: #0f0; box-shadow: 0 0 15px #0f0, inset 0 0 10px #0f0;" onclick="toggleDev()">RESUME ENGINE</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// SECTION 2: GLOBAL VARIABLES & DATA MODELS
+// ==========================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let gameState = 'START'; 
+let playerCash = 500; let currentDay = 1; let combatTimer = 0; let maxCombatTimer = 30 * 60;
+let activeShop = 'MAIN'; let preDevState = 'MARKET'; 
+
+let particles = []; let screenShake = 0; let portal = null;
+let stagedCart = {}; let stagedUpgrades = []; 
+let bullets = []; let enemies = []; let enemyBullets = []; let allyBullets = []; let drops = [];
+
+let player = { 
+    x: 50, y: 300, width: 30, height: 20, speed: 3, maxHp: 3, hp: 3, damage: 1, maxCargo: 100,
+    shieldTime: 0, shootCooldown: 0, activeWeapon: 'ammo_std', magnetRange: 40, caliberLevel: 0, interestRate: 0, hasAnalytics: false,
+    isChargingLaser: false, laserChargeTimer: 0, burstsRemaining: 0, burstDelay: 0, heat: 0, maxHeat: 80, coolingRate: 0.3, overheated: false,
+    slowTimer: 0, growTimer: 0
+};
+
+const factions = {
+    anarchy: { name: "Anarchy Zone", rep: 0, color: '#aaaaaa' },
+    alpha: { name: "Alpha Syndicate", rep: 0, color: '#ff0055' },
+    beta: { name: "Beta Bastion", rep: 0, color: '#0055ff' },
+    gamma: { name: "Gamma Core", rep: 0, color: '#00ff55' },
+    delta: { name: "Delta Phantoms", rep: 0, color: '#aa00ff' },
+    epsilon: { name: "Epsilon Seekers", rep: 0, color: '#ffaa00' },
+    zeta: { name: "Zeta Velocity", rep: 0, color: '#00ffff' },
+    eta: { name: "Eta Waves", rep: 0, color: '#ff00ff' },
+    theta: { name: "Theta Swarm", rep: 0, color: '#ffff00' },
+    iota: { name: "Iota Morphers", rep: 0, color: '#ffffff' }
+};
+
+const mapGrid = [
+    [{name: "Alpha Outpost", m:'alpha', mPwr: 80, r:'anarchy', rPwr: 20, s: ['scrap'], d: ['repair']}, {name: "Beta Forge", m:'beta', mPwr: 90, r:'gamma', rPwr: 40, s: ['ammo_rapid'], d: ['scrap']}, {name: "Gamma Labs", m:'gamma', mPwr: 70, r:'delta', rPwr: 30, s: ['ammo_laser', 'ammo_rad'], d: ['ammo_spread']}],
+    [{name: "Delta Prime", m:'delta', mPwr: 60, r:'epsilon', rPwr: 40, s: ['repair'], d: ['shield']}, {name: "Epsilon Hub", m:'epsilon', mPwr: 100, r:'zeta', rPwr: 10, s: [], d: []}, {name: "Zeta Station", m:'zeta', mPwr: 85, r:'eta', rPwr: 30, s: ['bomb'], d: []}],
+    [{name: "Eta Mines", m:'eta', mPwr: 75, r:'theta', rPwr: 25, s: ['ammo_spread'], d: ['ammo_laser']}, {name: "Theta-7", m:'theta', mPwr: 95, r:'iota', rPwr: 50, s: ['shield'], d: ['ammo_charm']}, {name: "Iota Terminus", m:'iota', mPwr: 80, r:'alpha', rPwr: 45, s: ['ammo_grow'], d: ['bomb', 'scrap']}]
+];
+let currX = 1, currY = 1; let targetX = 1, targetY = 1;
+
+const inventory = {
+    ammo_rapid: { name: 'Burst Ammo', qty: 0, basePrice: 5, idealStock: 300, size: 0.5 },
+    ammo_spread: { name: 'Spread Ammo', qty: 0, basePrice: 10, idealStock: 200, size: 0.5 },
+    ammo_rad: { name: 'Rad Ammo', qty: 0, basePrice: 25, idealStock: 150, size: 1 },
+    ammo_laser: { name: 'Heavy Laser', qty: 0, basePrice: 30, idealStock: 100, size: 1 },
+    ammo_home: { name: 'Homing Ammo', qty: 0, basePrice: 35, idealStock: 100, size: 1 },
+    ammo_charm: { name: 'Charm Darts', qty: 0, basePrice: 40, idealStock: 100, size: 1 },
+    ammo_grow: { name: 'Grow Ammo', qty: 0, basePrice: 45, idealStock: 100, size: 1 },
+    scrap: { name: 'Alien Scrap', qty: 0, basePrice: 75, idealStock: 100, size: 1.5 },
+    shield: { name: 'Plasma Shield', qty: 1, basePrice: 250, idealStock: 15, size: 2 },
+    repair: { name: 'Repair Kit', qty: 1, basePrice: 300, idealStock: 20, size: 2 },
+    bomb: { name: 'Smart Bomb', qty: 1, basePrice: 600, idealStock: 10, size: 3 }
+};
+
+const upgrades = {
+    hull: { name: 'Reinforced Hull (+HP)', level: 0, basePrice: 400 }, damage: { name: 'Blaster Array (+Dmg)', level: 0, basePrice: 600 },
+    speed: { name: 'Thrusters (+Spd)', level: 0, basePrice: 300 }, cargo: { name: 'Cargo Bay (+Space)', level: 0, basePrice: 400 }, 
+    magnet: { name: 'Grav-Magnet (+Range)', level: 0, basePrice: 250 }, heatCap: { name: 'Heat Sinks (+Max Heat)', level: 0, basePrice: 350 }, 
+    cooling: { name: 'Coolant (+Cooling)', level: 0, basePrice: 450 }, caliber: { name: 'Heavy Caliber (+Size)', level: 0, basePrice: 500 },
+    interest: { name: 'Bank Acct (+Interest)', level: 0, basePrice: 800 }, analytics: { name: 'Market Scanner', level: 0, basePrice: 350, maxLevel: 1 }
+};
+
+// DEV SETTINGS 
+let DEV = { 
+    basePlayerSpeed: 2, combatDurationSec: 30, enemySpawnRate: 0.04, screenShakeMult: 1.0, baseMaxHeat: 80, baseCooling: 0.3, enemySpeedMult: 1.0,
+    wpn_std_dmg: 1, wpn_std_spd: 10, wpn_std_cd: 20, wpn_std_heat: 8,
+    wpn_rapid_dmg: 1, wpn_rapid_spd: 14, wpn_rapid_cd: 25, wpn_rapid_heat: 18,
+    wpn_spread_dmg: 1, wpn_spread_spd: 10, wpn_spread_cd: 20, wpn_spread_heat: 15,
+    wpn_laser_dmg: 8, wpn_laser_spd: 25, wpn_laser_cd: 40, wpn_laser_heat: 40,
+    wpn_charm_dmg: 0, wpn_charm_spd: 8, wpn_charm_cd: 25, wpn_charm_heat: 25,
+    enm_red_hp: 2, enm_red_spd: 1, enm_red_fr: 90, enm_red_dmg: 1,
+    enm_blue_hp: 1, enm_blue_spd: 1, enm_blue_fr: 140, enm_blue_dmg: 1,
+    enm_orange_hp: 4, enm_orange_spd: 1, enm_orange_fr: 120, enm_orange_dmg: 1,
+    enm_fac_hpMult: 1, enm_fac_spdMult: 1, enm_fac_frMult: 1, enm_fac_dmgMult: 1 
+};
+const devMenuLayout = [
+    { title: "General Settings", items: [ { id: "basePlayerSpeed", label: "Player Speed", min: 1, max: 10, step: 1 }, { id: "combatDurationSec", label: "Combat Time (s)", min: 10, max: 120, step: 1 }, { id: "enemySpawnRate", label: "Global Spawn Rate", min: 0.01, max: 0.2, step: 0.01 }, { id: "enemySpeedMult", label: "Global Enemy Speed", min: 0.1, max: 3, step: 0.1 }, { id: "screenShakeMult", label: "Screen Shake Mult", min: 0, max: 3, step: 0.1 }, { id: "baseMaxHeat", label: "Base Max Heat", min: 50, max: 300, step: 10 }, { id: "baseCooling", label: "Base Cooling Rate", min: 0.1, max: 5.0, step: 0.1 } ]},
+    { title: "Weapon: Standard", items: [ { id: "wpn_std_dmg", label: "Damage Mult", min: 0.1, max: 5, step: 0.1 }, { id: "wpn_std_spd", label: "Proj Speed", min: 2, max: 30, step: 1 }, { id: "wpn_std_cd", label: "Cooldown (frames)", min: 2, max: 60, step: 1 }, { id: "wpn_std_heat", label: "Heat per Shot", min: 0, max: 50, step: 1 } ]},
+    { title: "Weapon: Burst (Rapid)", items: [ { id: "wpn_rapid_dmg", label: "Damage Mult", min: 0.1, max: 5, step: 0.1 }, { id: "wpn_rapid_spd", label: "Proj Speed", min: 2, max: 30, step: 1 }, { id: "wpn_rapid_cd", label: "Cooldown (frames)", min: 2, max: 60, step: 1 }, { id: "wpn_rapid_heat", label: "Heat per Burst", min: 0, max: 50, step: 1 } ]},
+    { title: "Weapon: Spread", items: [ { id: "wpn_spread_dmg", label: "Damage Mult", min: 0.1, max: 5, step: 0.1 }, { id: "wpn_spread_spd", label: "Proj Speed", min: 2, max: 30, step: 1 }, { id: "wpn_spread_cd", label: "Cooldown (frames)", min: 2, max: 60, step: 1 }, { id: "wpn_spread_heat", label: "Heat per Shot", min: 0, max: 50, step: 1 } ]},
+    { title: "Weapon: Heavy Laser", items: [ { id: "wpn_laser_dmg", label: "Damage Base", min: 1, max: 50, step: 1 }, { id: "wpn_laser_spd", label: "Proj Speed", min: 5, max: 50, step: 1 }, { id: "wpn_laser_cd", label: "Cooldown (frames)", min: 10, max: 120, step: 1 }, { id: "wpn_laser_heat", label: "Heat per Shot", min: 0, max: 100, step: 1 } ]},
+    { title: "Weapon: Charm Darts", items: [ { id: "wpn_charm_spd", label: "Proj Speed", min: 2, max: 30, step: 1 }, { id: "wpn_charm_cd", label: "Cooldown (frames)", min: 10, max: 60, step: 1 }, { id: "wpn_charm_heat", label: "Heat per Shot", min: 0, max: 50, step: 1 } ]},
+    { title: "Enemy: Red (Standard)", items: [ { id: "enm_red_hp", label: "Health", min: 1, max: 20, step: 1 }, { id: "enm_red_dmg", label: "Damage Dealt", min: 1, max: 5, step: 1 }, { id: "enm_red_spd", label: "Speed Mult", min: 0.1, max: 5, step: 0.1 }, { id: "enm_red_fr", label: "Fire Rate (frames)", min: 10, max: 200, step: 5 } ]},
+    { title: "Enemy: Blue (Sniper)", items: [ { id: "enm_blue_hp", label: "Health", min: 1, max: 20, step: 1 }, { id: "enm_blue_dmg", label: "Damage Dealt", min: 1, max: 5, step: 1 }, { id: "enm_blue_spd", label: "Speed Mult", min: 0.1, max: 5, step: 0.1 }, { id: "enm_blue_fr", label: "Fire Rate (frames)", min: 10, max: 300, step: 5 } ]},
+    { title: "Enemy: Orange (Gel)", items: [ { id: "enm_orange_hp", label: "Base Health", min: 1, max: 20, step: 1 }, { id: "enm_orange_dmg", label: "Damage Dealt", min: 1, max: 5, step: 1 }, { id: "enm_orange_spd", label: "Speed Mult", min: 0.1, max: 5, step: 0.1 }, { id: "enm_orange_fr", label: "Fire Rate (frames)", min: 10, max: 200, step: 5 } ]},
+    { title: "Enemy: Faction Ships", items: [ { id: "enm_fac_hpMult", label: "Health Mult", min: 0.1, max: 5, step: 0.1 }, { id: "enm_fac_dmgMult", label: "Damage Mult", min: 0.1, max: 5, step: 0.1 }, { id: "enm_fac_spdMult", label: "Speed Mult", min: 0.1, max: 5, step: 0.1 }, { id: "enm_fac_frMult", label: "Fire Rate Mult", min: 0.1, max: 5, step: 0.1 } ]}
+];
+
+// ==========================================
+// SECTION 3: INPUT & SPATIAL NAVIGATION     
+// ==========================================
+let usingKeyboard = false; window.addEventListener('mousedown', () => { usingKeyboard = false; });
+function saveFocus() { if (document.activeElement && document.activeElement.hasAttribute('data-nav-id')) lastFocusedId = document.activeElement.getAttribute('data-nav-id'); }
+function restoreFocus() {
+    if (lastFocusedId) {
+        let el = document.querySelector(`[data-nav-id="${lastFocusedId}"]`);
+        if (el && !el.disabled) { 
+            el.focus({preventScroll: true});
+            setTimeout(() => { let retry = document.querySelector(`[data-nav-id="${lastFocusedId}"]`); if (retry && document.activeElement !== retry) retry.focus({preventScroll: true}); }, 10);
+            return; 
+        }
+    }
+    focusFirst(); 
+}
+function focusFirst() { setTimeout(() => { let focusables = document.querySelectorAll('.overlay:not(.hidden) [data-nav-id]:not(:disabled):not(.locked), .overlay:not(.hidden) .intercom-box'); if (focusables.length > 0) focusables[0].focus({preventScroll: true}); }, 50); }
+function moveFocus(dir) {
+    const focusables = Array.from(document.querySelectorAll('.overlay:not(.hidden) [data-nav-id]:not(:disabled):not(.locked), .overlay:not(.hidden) .intercom-box')).filter(el => el.offsetParent !== null); 
+    let current = document.activeElement;
+    if (!focusables.includes(current)) { if (lastFocusedId) { let rec = document.querySelector(`[data-nav-id="${lastFocusedId}"]`); if (rec && focusables.includes(rec)) current = rec; else { focusFirst(); return; } } else { focusFirst(); return; } }
+    
+    const cRect = current.getBoundingClientRect(); const cx = cRect.left + cRect.width/2; const cy = cRect.top + cRect.height/2;
+    let best = null; let bestScore = Infinity;
+    
+    focusables.forEach(el => {
+        if (el === current) return;
+        const r = el.getBoundingClientRect(); const ex = r.left + r.width/2; const ey = r.top + r.height/2; let dx = ex - cx; let dy = ey - cy;
+        if (dir === 'ArrowRight' && dx <= 5) return; if (dir === 'ArrowLeft'  && dx >= -5) return; if (dir === 'ArrowDown'  && dy <= 5) return; if (dir === 'ArrowUp'    && dy >= -5) return;
+        let score = (dir === 'ArrowRight' || dir === 'ArrowLeft') ? Math.abs(dx) + Math.abs(dy) * 10 : Math.abs(dy) + Math.abs(dx) * 10; 
+        if (score < bestScore) { bestScore = score; best = el; }
+    });
+    
+    if (best) {
+        if (best.classList.contains('faction-tab') || best.classList.contains('intercom-box')) {
+            best.setAttribute('tabindex', '0'); best.onkeydown = function(e) { if(e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.click(); } };
+        }
+        best.focus();
+    }
+}
+
+let keys = {};
+window.addEventListener('keydown', e => {
+    usingKeyboard = true; keys[e.code] = true;
+    if (e.code === 'Backslash') { toggleDev(); return; }
+    if (gameState === 'COMBAT') {
+        if (e.code === 'Escape' || e.code === 'KeyP') togglePause();
+        if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault(); 
+        
+        if (e.code === 'Digit1' && inventory.shield.qty>0 && player.shieldTime<=0) { inventory.shield.qty--; player.shieldTime=180; updateCombatHUD();}
+        if (e.code === 'Digit2' && inventory.bomb.qty>0) { inventory.bomb.qty--; enemies=[]; enemyBullets=[]; createExplosion(canvas.width/2, canvas.height/2, '#f0f', 100, 20); screenShake=30; updateCombatHUD();}
+        if (e.code === 'KeyH' && inventory.repair.qty>0 && player.hp<player.maxHp) { inventory.repair.qty--; player.hp++; createExplosion(player.x, player.y, '#0f0', 30, 5); updateCombatHUD();}
+        
+        let wepMap = {'Digit3':'ammo_std', 'Digit4':'ammo_rapid', 'Digit5':'ammo_spread', 'Digit6':'ammo_laser', 'Digit7':'ammo_charm', 'Digit8':'ammo_rad', 'Digit9':'ammo_home', 'Digit0':'ammo_grow'};
+        if (wepMap[e.code]) { player.activeWeapon = wepMap[e.code]; updateCombatHUD(); }
+    } else {
+        if (e.code === 'Escape' || e.code === 'KeyP') { if (gameState === 'PAUSED') togglePause(); return; }
+        if (e.code.startsWith('Arrow')) { if (document.activeElement.tagName === 'INPUT' && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) return; e.preventDefault(); moveFocus(e.code); }
+        if (e.code === 'Space' || e.code === 'Enter') { if (document.activeElement.classList.contains('faction-tab') || document.activeElement.classList.contains('intercom-box')) { e.preventDefault(); document.activeElement.click(); } }
+    }
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+document.addEventListener('DOMContentLoaded', focusFirst);
+
+// ==========================================
+// SECTION 4: UI RENDERING & OVERLAYS        
+// ==========================================
+function buildDevMenu() {
+    let html = '';
+    devMenuLayout.forEach((group, gIdx) => {
+        html += `<details><summary data-nav-id="dev-sum-${gIdx}">${group.title}</summary><div class="details-content">`;
+        group.items.forEach(item => { html += `<div class="dev-row"><span class="dev-label">${item.label}:</span><input type="range" data-nav-id="dev-${item.id}" id="dev-${item.id}" min="${item.min}" max="${item.max}" step="${item.step}" value="${DEV[item.id]}" style="flex:1;" oninput="updateDev('${item.id}', this.value)"><span id="val-${item.id}" class="dev-val">${DEV[item.id]}</span></div>`; });
+        html += `</div></details>`;
+    });
+    document.getElementById('dev-content-injector').innerHTML = html;
+}
+function updateDev(id, val) {
+    let numVal = Number(val); DEV[id] = numVal; document.getElementById('val-' + id).innerText = numVal;
+    if (id === 'basePlayerSpeed') player.speed = DEV.basePlayerSpeed + upgrades.speed.level;
+    if (id === 'baseMaxHeat') player.maxHeat = DEV.baseMaxHeat + (upgrades.heatCap.level * 25);
+    if (id === 'baseCooling') player.coolingRate = DEV.baseCooling + (upgrades.cooling.level * 0.5);
+}
+function toggleDev() {
+    if (gameState === 'DEV') {
+        gameState = preDevState; document.getElementById('dev-layer').classList.add('hidden'); 
+        if (gameState === 'COMBAT') { updateCombatHUD(); requestAnimationFrame(gameLoop); } else if (gameState === 'MARKET') { restoreFocus(); }
+    } else {
+        saveFocus(); preDevState = gameState; gameState = 'DEV'; document.getElementById('dev-layer').classList.remove('hidden'); focusFirst();
+    }
+}
+
+function drawAvatar(ctxId, factionKey) {
+    let cvs = document.getElementById(ctxId); let cx = cvs.getContext('2d');
+    let col = factions[factionKey].color;
+    cx.clearRect(0, 0, 150, 150); cx.translate(75, 75);
+    cx.shadowColor = col; cx.shadowBlur = 15; cx.strokeStyle = col; cx.lineWidth = 4;
+    
+    cx.beginPath();
+    if (factionKey === 'alpha') { cx.moveTo(0, -40); cx.lineTo(40, 40); cx.lineTo(-40, 40); }
+    else if (factionKey === 'beta') { cx.rect(-30, -30, 60, 60); }
+    else if (factionKey === 'gamma') { cx.arc(0, 0, 35, 0, Math.PI*2); }
+    else if (factionKey === 'delta') { cx.moveTo(0,-40); cx.lineTo(30,0); cx.lineTo(0,40); cx.lineTo(-30,0); }
+    else if (factionKey === 'epsilon') { cx.moveTo(-40, -20); cx.lineTo(40, -20); cx.moveTo(-40, 20); cx.lineTo(40, 20); }
+    else if (factionKey === 'zeta') { cx.moveTo(-30, -40); cx.lineTo(30, -40); cx.lineTo(-30, 40); cx.lineTo(30, 40); }
+    else if (factionKey === 'eta') { cx.arc(-20, 0, 20, 0, Math.PI, true); cx.arc(20, 0, 20, Math.PI, Math.PI*2, false); }
+    else if (factionKey === 'theta') { cx.arc(0,-20,15,0,Math.PI*2); cx.arc(-20,20,15,0,Math.PI*2); cx.arc(20,20,15,0,Math.PI*2); }
+    else if (factionKey === 'iota') { cx.moveTo(0, -40); cx.lineTo(0, 40); }
+    else { cx.moveTo(-30, -30); cx.lineTo(30, 30); cx.moveTo(30, -30); cx.lineTo(-30, 30); }
+    cx.closePath(); cx.stroke(); cx.resetTransform();
+}
+
+function showArrivalScreen() {
+    gameState = 'ARRIVAL';
+    document.getElementById('ui-layer').classList.add('hidden');
+    document.getElementById('map-layer').classList.add('hidden');
+    document.getElementById('arrival-layer').classList.remove('hidden');
+
+    let loc = mapGrid[currY][currX]; let mFac = factions[loc.m]; let rFac = factions[loc.r];
+    let getQuote = (rep) => { if (rep < -20) return `"We have no love for you here. Tread lightly."`; if (rep > 20) return `"Welcome back to our sector, honored trader."`; return `"State your business and move along."`; };
+    let mStyle = `color: ${mFac.color}; border-color: ${mFac.color}; box-shadow: 0 0 15px ${mFac.color}, inset 0 0 10px ${mFac.color}; text-shadow: 0 0 10px ${mFac.color};`;
+    let rStyle = `color: ${rFac.color}; border-color: ${rFac.color}; box-shadow: 0 0 15px ${rFac.color}, inset 0 0 10px ${rFac.color}; text-shadow: 0 0 10px ${rFac.color};`;
+
+    let html = `
+        <div class="intercom-box" style="${mStyle}" tabindex="0" onclick="enterMarket('MAIN')">
+            <h3 style="color:${mFac.color};">${mFac.name} (MAIN HUB)</h3>
+            <canvas id="av-main" class="avatar-canvas" style="color:${mFac.color};" width="150" height="150"></canvas>
+            <div class="dialog-text">${getQuote(mFac.rep)}</div>
+            <div style="font-weight:bold;">REP: ${Math.floor(mFac.rep)}</div><br>
+            <strong>[ ENTER MAIN MARKET ]</strong>
+        </div>
+        <div class="intercom-box" style="${rStyle}" tabindex="0" onclick="enterMarket('RISING')">
+            <h3 style="color:${rFac.color};">${rFac.name} (BACK ALLEY)</h3>
+            <canvas id="av-back" class="avatar-canvas" style="color:${rFac.color};" width="150" height="150"></canvas>
+            <div class="dialog-text">${getQuote(rFac.rep)}</div>
+            <div style="font-weight:bold;">REP: ${Math.floor(rFac.rep)}</div><br>
+            <strong>[ ENTER BACK ALLEY ]</strong>
+        </div>
+    `;
+    document.getElementById('intercom-container').innerHTML = html;
+    drawAvatar('av-main', loc.m); drawAvatar('av-back', loc.r);
+    focusFirst();
+}
+
+function enterMarket(shopType) {
+    document.getElementById('arrival-layer').classList.add('hidden');
+    document.getElementById('ui-layer').classList.remove('hidden');
+    gameState = 'MARKET'; setShop(shopType);
+}
+
+function updateMarketUI() {
+    saveFocus(); 
+    let mCol = document.getElementById('market-items') ? document.getElementById('market-items').parentElement : null; let uCol = document.getElementById('upgrade-items') ? document.getElementById('upgrade-items').parentElement : null;
+    let mScroll = mCol ? mCol.scrollTop : 0; let uScroll = uCol ? uCol.scrollTop : 0;
+
+    let loc = mapGrid[currY][currX]; let sd = getStagedData(); let projCash = playerCash + sd.cash; let projCargo = getUsedCargo() + sd.cargo; let isLocked = loc.traded; 
+
+    document.getElementById('market-day').innerText = currentDay; document.getElementById('market-cash').innerText = Math.floor(projCash);
+    document.getElementById('market-cargo').innerText = Math.ceil(projCargo); document.getElementById('market-maxcargo').innerText = player.maxCargo;
+    document.getElementById('market-cargo').style.color = projCargo >= player.maxCargo * 0.9 ? '#f00' : '#fff';
+
+    let mFac = factions[loc.m]; let rFac = factions[loc.r];
+    document.getElementById('faction-tabs').innerHTML = `
+        <div class="faction-tab ${activeShop==='MAIN'?'active':''} ${isLocked?'locked':''}" data-nav-id="tab-MAIN" tabindex="${isLocked ? '-1' : '0'}" onclick="${isLocked ? '' : "setShop('MAIN')"}"><strong style="font-size: 16px; color:${mFac.color}; text-shadow:0 0 5px ${mFac.color}">Main Hub: ${mFac.name}</strong><br><small>Power: ${Math.floor(loc.mPwr)} | <span class="${getRepClass(mFac.rep)}">Rep: ${Math.floor(mFac.rep)}</span></small>${isLocked ? '<br><small style="color:#f00">CLOSED</small>' : ''}</div>
+        <div class="faction-tab ${activeShop==='RISING'?'active':''} ${isLocked?'locked':''}" data-nav-id="tab-RISING" tabindex="${isLocked ? '-1' : '0'}" onclick="${isLocked ? '' : "setShop('RISING')"}"><strong style="font-size: 16px; color:${rFac.color}; text-shadow:0 0 5px ${rFac.color}">Back Alley: ${rFac.name}</strong><br><small>Power: ${Math.floor(loc.rPwr)} | <span class="${getRepClass(rFac.rep)}">Rep: ${Math.floor(rFac.rep)}</span></small>${isLocked ? '<br><small style="color:#f00">CLOSED</small>' : ''}</div>
+    `;
+
+    let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let currentStockObj = getActiveStockObject(); const mContainer = document.getElementById('market-items'); 
+    let mHTML = '';
+    if (isLocked) mHTML = `<div style="text-align:center; padding: 40px; color: #f00; border: 1px solid #f00; box-shadow: inset 0 0 15px #f00, 0 0 15px #f00; text-shadow: 0 0 10px #f00;"><h3>MARKET CLOSED</h3><p>This sector's markets are closed until your next visit.</p></div>`;
+    else {
+        for (let key in inventory) {
+            const item = inventory[key]; let c = stagedCart[key] || 0; let b = c > 0 ? c : 0; let s = c < 0 ? Math.abs(c) : 0; let availStock = Math.floor(currentStockObj[key]) - b;
+            let stdDisp = player.hasAnalytics ? `$${item.basePrice}` : '???';
+            let priceDisplay = item.curBuy === item.curSell ? `Price: $<span style="color:#ff0">${item.curBuy}</span>` : `Buy: $<span style="color:#f00">${item.curBuy}</span> | Sell: $<span style="color:#0f0">${item.curSell}</span>`;
+            let stockDisplay = availStock > 0 ? `<span style="color:#0ff">${availStock}</span>` : `<span style="color:#f00">OUT OF STOCK</span>`;
+            if (currentStockObj[key] === 0 && activeShop === 'RISING') priceDisplay = `Buy: <span style="color:#555">N/A</span> | Sell: $<span style="color:#0f0">${item.curSell}</span>`;
+            let stagedHTML = ''; if (b > 0) stagedHTML = `<span style="color:#f00"> (+${b})</span>`; if (s > 0) stagedHTML = `<span style="color:#0f0"> (-${s})</span>`;
+
+            mHTML += `<div class="terminal-table">
+                <div><strong style="color:${item.name.includes('Ammo') ? '#ff0' : (key==='repair'?'#0f0':'#fff')}">${item.name}</strong> <span style="color:#888; font-size:10px;">(Sz:${item.size})</span></div>
+                <div>${priceDisplay} <span style="color:#888; font-size:10px;">(Std:${stdDisp})</span></div>
+                <div>Own: ${item.qty}${stagedHTML}<br>Stock: ${stockDisplay}</div>
+                <div style="text-align:right;">
+                    <button data-nav-id="buy1-${key}" onclick="adjustCart('${key}', 1)">+1</button> <button data-nav-id="buy10-${key}" onclick="adjustCart('${key}', 10)">+10</button><br>
+                    <button data-nav-id="sell1-${key}" class="sell" style="margin-top:2px" onclick="adjustCart('${key}', -1)">-1</button> <button data-nav-id="sell10-${key}" class="sell" style="margin-top:2px" onclick="adjustCart('${key}', -10)">-10</button>
+                </div></div>`;
+        }
+    }
+    mContainer.innerHTML = mHTML; 
+
+    const uContainer = document.getElementById('upgrade-items'); let uHTML = '';
+    if (isLocked) uHTML = `<div style="text-align:center; padding: 20px; color: #555; text-shadow: 0 0 5px #555; border: 1px solid #444;">Shipyard access denied.</div>`;
+    else {
+        let currentUpgrades = activeShop === 'MAIN' ? loc.mUpgrades : loc.rUpgrades;
+        currentUpgrades.forEach(key => {
+            const upg = upgrades[key]; if (upg.maxLevel && upg.level >= upg.maxLevel) return;
+            let baseCost = upg.basePrice * (upg.level + 1); let cost = Math.max(1, Math.floor(baseCost * (1 - (factions[activeFacKey].rep * 0.002))));
+            let isStaged = stagedUpgrades.includes(key); let btnText = isStaged ? "Remove" : "Add to Cart"; let btnClass = isStaged ? "sell" : "upg"; let stagedLabel = isStaged ? `<span style="color:#0ff"> (In Cart)</span>` : ``;
+            uHTML += `<div class="upgrade-item"><div><strong style="color:#f0f;">${upg.name}</strong>${stagedLabel}<br><span style="color:#aaa;">Level: ${upg.level} | Cost: $<span style="color:#f00">${cost}</span></span></div><button data-nav-id="upg-${key}" class="${btnClass}" onclick="stageUpgrade('${key}')">${btnText}</button></div>`;
+        });
+        if (currentUpgrades.filter(key => !(upgrades[key].maxLevel && upgrades[key].level >= upgrades[key].maxLevel)).length === 0) uHTML = `<div style="text-align:center; padding: 20px; color: #0ff; border: 1px solid rgba(0, 255, 255, 0.4); box-shadow: inset 0 0 10px rgba(0,255,255,0.1);">No upgrades available.</div>`;
+    }
+    uContainer.innerHTML = uHTML; 
+
+    let cartNetCash = document.getElementById('cart-net-cash'); cartNetCash.innerText = sd.cash >= 0 ? `+$${sd.cash}` : `-$${Math.abs(sd.cash)}`; cartNetCash.style.color = sd.cash >= 0 ? '#0f0' : '#f00';
+    let cartNetCargo = document.getElementById('cart-net-cargo'); cartNetCargo.innerText = sd.cargo >= 0 ? `+${Math.ceil(sd.cargo)}` : `${Math.ceil(sd.cargo)}`; cartNetCargo.style.color = sd.cargo > 0 ? '#f00' : '#0f0';
+    document.getElementById('btn-submit').disabled = isLocked;
+    if (mCol) mCol.scrollTop = mScroll; if (uCol) uCol.scrollTop = uScroll; restoreFocus(); 
+}
+
+function openMap() {
+    lastFocusedId = null; gameState = 'MAP'; document.getElementById('ui-layer').classList.add('hidden'); document.getElementById('map-layer').classList.remove('hidden');
+    const wrapper = document.getElementById('map-wrapper'); wrapper.innerHTML = '';
+    for(let y = 0; y < 3; y++) {
+        for(let x = 0; x < 3; x++) {
+            let loc = mapGrid[y][x]; let isCurrent = (x === currX && y === currY); let isAdj = (Math.abs(x - currX) + Math.abs(y - currY) === 1); 
+            let btn = document.createElement('button'); btn.className = 'map-node'; btn.setAttribute('data-nav-id', `map-node-${x}-${y}`); 
+            if (isCurrent) btn.classList.add('current'); if (isAdj) btn.classList.add('adjacent'); else if (!isCurrent) btn.disabled = true;
+            let status = isCurrent ? 'CURRENT LOCATION' : (isAdj ? 'INITIATE JUMP' : 'OUT OF RANGE');
+            btn.innerHTML = `<strong style="font-size:16px;">${loc.name}</strong><br><small style="margin-top:5px; color:#aaa; text-shadow:none;">${status}</small>`;
+            if (isAdj) btn.onclick = () => { targetX = x; targetY = y; startCombat(); }; wrapper.appendChild(btn);
+        }
+    }
+    focusFirst();
+}
+
+function cancelMap() { lastFocusedId = null; gameState = 'MARKET'; document.getElementById('map-layer').classList.add('hidden'); document.getElementById('ui-layer').classList.remove('hidden'); focusFirst(); }
+
+function togglePause() {
+    if (gameState === 'COMBAT') { lastFocusedId = null; gameState = 'PAUSED'; document.getElementById('pause-layer').classList.remove('hidden'); renderPauseMenu(); focusFirst(); } 
+    else if (gameState === 'PAUSED') { gameState = 'COMBAT'; document.getElementById('pause-layer').classList.add('hidden'); updateCombatHUD(); requestAnimationFrame(gameLoop); }
+}
+
+function renderPauseMenu() {
+    saveFocus();
+    const pContainer = document.getElementById('pause-items'); pContainer.innerHTML = '';
+    ['ammo_std', 'ammo_rapid', 'ammo_spread', 'ammo_laser', 'ammo_charm'].forEach(key => {
+        const qty = key === 'ammo_std' ? '∞' : inventory[key].qty; const name = key === 'ammo_std' ? 'Std Ammo' : (inventory[key] ? inventory[key].name : ''); const isActive = player.activeWeapon === key;
+        let activeStyle = isActive ? 'background: rgba(0, 255, 0, 0.3); color: #0f0; border-color: #0f0; box-shadow: 0 0 10px #0f0 inset, 0 0 10px #0f0; text-shadow: 0 0 5px #0f0;' : '';
+        pContainer.innerHTML += `<div class="pause-item"><div><strong style="color:#ff0">${name}</strong> (${qty})</div><button data-nav-id="pause-eqp-${key}" class="eqp" style="${activeStyle}" onclick="equipWeapon('${key}')">${isActive ? 'EQUIPPED' : 'EQUIP'}</button></div>`;
+    });
+    ['shield', 'bomb', 'repair'].forEach(key => {
+        const item = inventory[key]; let color = key==='shield'?'#0ff':(key==='bomb'?'#f0f':'#0f0');
+        pContainer.innerHTML += `<div class="pause-item"><div><strong style="color:${color}">${item.name}</strong> (${item.qty})</div><button data-nav-id="pause-use-${key}" class="upg" onclick="useItemFromMenu('${key}')">USE ITEM</button></div>`;
+    });
+    setTimeout(() => { restoreFocus(); }, 0); 
+}
+
+function updateCombatHUD() {
+    document.getElementById('hud-hp').innerText = player.hp; document.getElementById('hud-maxhp').innerText = player.maxHp;
+    let usedCargo = getUsedCargo(); document.getElementById('hud-cargo').innerText = `${Math.ceil(usedCargo)}/${player.maxCargo}`; document.getElementById('hud-cargo').style.color = usedCargo >= player.maxCargo * 0.9 ? '#f00' : '#fff';
+    document.getElementById('hud-time').innerText = Math.ceil(combatTimer / 60); document.getElementById('hud-cash').innerText = playerCash;
+    document.getElementById('hud-shield').innerText = inventory.shield.qty; document.getElementById('hud-bomb').innerText = inventory.bomb.qty; document.getElementById('hud-repair').innerText = inventory.repair.qty;
+    document.getElementById('hud-weapon').innerText = player.activeWeapon.replace('ammo_', '').toUpperCase(); document.getElementById('hud-ammo').innerText = player.activeWeapon === 'ammo_std' ? '∞' : inventory[player.activeWeapon].qty;
+}
+
+// ==========================================
+// SECTION 5: CORE ECONOMY & MARKET LOGIC    
+// ==========================================
+function getUsedCargo() { let total = 0; for (let key in inventory) total += inventory[key].qty * inventory[key].size; return total; }
+
+function getStagedData(excludeKey = null) {
+    let stagedCash = 0; let stagedCargo = 0;
+    for (let key in inventory) {
+        if (key === excludeKey) continue;
+        let c = stagedCart[key] || 0;
+        if (c > 0) { stagedCash -= c * inventory[key].curBuy; stagedCargo += c * inventory[key].size; } else if (c < 0) { stagedCash += Math.abs(c) * inventory[key].curSell; stagedCargo -= Math.abs(c) * inventory[key].size; }
+    }
+    let loc = mapGrid[currY][currX]; let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let repMod = factions[activeFacKey].rep * 0.002;
+    stagedUpgrades.forEach(key => { let upg = upgrades[key]; let baseCost = upg.basePrice * (upg.level + 1); let cost = Math.max(1, Math.floor(baseCost * (1 - repMod))); stagedCash -= cost; });
+    return { cash: stagedCash, cargo: stagedCargo };
+}
+
+function clearCart() { stagedCart = {}; stagedUpgrades = []; updateMarketUI(); }
+function setShop(shopType) { stagedCart = {}; stagedUpgrades = []; activeShop = shopType; calculateCurrentPrices(); updateMarketUI(); }
+function getRepClass(rep) { if (rep > 10) return 'rep-good'; if (rep < -10) return 'rep-bad'; return 'rep-neu'; }
+function getActiveStockObject() { return activeShop === 'MAIN' ? mapGrid[currY][currX].mStock : mapGrid[currY][currX].rStock; }
+
+function calculateCurrentPrices() {
+    let loc = mapGrid[currY][currX]; let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let repMod = factions[activeFacKey].rep * 0.002; let currentStockObj = getActiveStockObject();
+    for (let key in inventory) {
+        let base = inventory[key].basePrice; let ideal = inventory[key].idealStock; let current = currentStockObj[key];
+        if (current === 0 && activeShop === 'RISING') { inventory[key].curBuy = 9999; inventory[key].curSell = Math.max(1, Math.floor((base * 0.5) * (1 + repMod))); } 
+        else { let ratio = ideal / (current + ideal * 0.1); let supplyPrice = Math.max(1, base * Math.pow(ratio, 1.3)); inventory[key].curBuy = Math.max(1, Math.floor(supplyPrice * (1 - repMod))); inventory[key].curSell = Math.max(1, Math.floor(supplyPrice * (1 + repMod))); }
+    }
+}
+
+function adjustCart(key, delta) {
+    let loc = mapGrid[currY][currX]; if (loc.traded) return;
+    let oldTarget = stagedCart[key] || 0; let newTarget = oldTarget + delta;
+    if (newTarget < -inventory[key].qty) newTarget = -inventory[key].qty;
+    if (newTarget > 0) { let stock = getActiveStockObject(); if (stock[key] === 0 && activeShop === 'RISING') newTarget = Math.min(newTarget, 0); else newTarget = Math.min(newTarget, Math.floor(stock[key])); }
+    let step = delta > 0 ? -1 : 1;
+    while (newTarget !== oldTarget) {
+        if (newTarget === 0) delete stagedCart[key]; else stagedCart[key] = newTarget;
+        let sd = getStagedData(); if (playerCash + sd.cash >= 0 && getUsedCargo() + sd.cargo <= player.maxCargo + 0.001) break; 
+        newTarget += step; 
+    }
+    if (newTarget === 0) delete stagedCart[key]; else stagedCart[key] = newTarget;
+    updateMarketUI();
+}
+
+function stageUpgrade(key) {
+    let index = stagedUpgrades.indexOf(key); if (index > -1) stagedUpgrades.splice(index, 1);
+    else { let sd = getStagedData(); let loc = mapGrid[currY][currX]; let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let cost = Math.max(1, Math.floor((upgrades[key].basePrice * (upgrades[key].level + 1)) * (1 - (factions[activeFacKey].rep * 0.002)))); if (playerCash + sd.cash >= cost) stagedUpgrades.push(key); }
+    updateMarketUI();
+}
+
+function processTradeImpact(factionKey, tradeValue) {
+    let fac = factions[factionKey]; let repGain = tradeValue / 100; 
+    fac.rep = Math.min(100, Math.max(-100, fac.rep + repGain));
+    let loc = mapGrid[currY][currX];
+    if (activeShop === 'MAIN') loc.mPwr += repGain * 2; else loc.rPwr += repGain * 2;
+    if (loc.rPwr > loc.mPwr) { let tempF = loc.m; let tempP = loc.mPwr; loc.m = loc.r; loc.mPwr = loc.rPwr; loc.r = tempF; loc.rPwr = tempP; let tempStock = loc.mStock; loc.mStock = loc.rStock; loc.rStock = tempStock; activeShop = 'MAIN'; }
+    if (loc.mPwr - loc.rPwr > 50) { let available = Object.keys(factions).filter(k => k !== loc.m && k !== loc.r && k !== 'anarchy'); loc.r = available[Math.floor(Math.random() * available.length)]; loc.rPwr = Math.max(10, loc.mPwr - 45); for(let key in inventory) loc.rStock[key] = Math.floor(loc.mStock[key] * 0.3); if (activeShop === 'RISING') activeShop = 'MAIN'; }
+}
+
+function submitCart() {
+    let loc = mapGrid[currY][currX]; let totalTradeVal = 0; let didTrade = false; let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let currentStockObj = getActiveStockObject();
+    for (let key in stagedCart) {
+        let c = stagedCart[key];
+        if (c > 0) { playerCash -= c * inventory[key].curBuy; inventory[key].qty += c; currentStockObj[key] -= c; totalTradeVal += c * inventory[key].curBuy; didTrade = true; }
+        if (c < 0) { let s = Math.abs(c); playerCash += s * inventory[key].curSell; inventory[key].qty -= s; currentStockObj[key] += s; totalTradeVal += s * inventory[key].curSell; didTrade = true; }
+    }
+    stagedUpgrades.forEach(key => {
+        let upg = upgrades[key]; let cost = Math.max(1, Math.floor((upg.basePrice * (upg.level + 1)) * (1 - (factions[activeFacKey].rep * 0.002)))); playerCash -= cost; upg.level++; totalTradeVal += cost; didTrade = true;
+        if(key === 'speed') player.speed = DEV.basePlayerSpeed + upg.level; if(key === 'damage') player.damage += 1; if(key === 'magnet') player.magnetRange += 40; if(key === 'cargo') player.maxCargo += 25; if(key === 'heatCap') player.maxHeat += 25; if(key === 'cooling') player.coolingRate += 0.5; if(key === 'caliber') player.caliberLevel += 1; if(key === 'interest') player.interestRate += 0.05; if(key === 'analytics') player.hasAnalytics = true; if(key === 'hull') { player.maxHp += 1; player.hp = player.maxHp; }
+    });
+    if (didTrade) { processTradeImpact(activeFacKey, totalTradeVal); loc.traded = true; }
+    stagedCart = {}; stagedUpgrades = []; calculateCurrentPrices(); updateMarketUI(); 
+}
+
+function initializeEconomy() {
+    for(let y=0; y<3; y++) {
+        for(let x=0; x<3; x++) {
+            let loc = mapGrid[y][x]; loc.mStock = {}; loc.rStock = {}; loc.traded = false; 
+            let keys = Object.keys(inventory); let m1 = keys[Math.floor(Math.random() * keys.length)]; let m2 = keys[Math.floor(Math.random() * keys.length)];
+            for(let key in inventory) {
+                let ideal = inventory[key].idealStock; let startStock = ideal;
+                if(loc.s.includes(key)) startStock = ideal * 2.5; if(loc.d.includes(key)) startStock = ideal * 0.2; 
+                loc.mStock[key] = Math.floor(startStock * (0.4 + Math.random() * 1.2));
+                if (key === m1 || key === m2) loc.rStock[key] = 0; else loc.rStock[key] = Math.floor(loc.mStock[key] * 0.3); 
+            }
+            loc.mUpgrades = Object.keys(upgrades).sort(() => 0.5 - Math.random()).slice(0, 3);
+            loc.rUpgrades = Object.keys(upgrades).sort(() => 0.5 - Math.random()).slice(0, 3);
+        }
+    }
+}
+
+function rollAllUpgrades() {
+    for(let y=0; y<3; y++) {
+        for(let x=0; x<3; x++) {
+            let pool = Object.keys(upgrades).filter(key => !upgrades[key].maxLevel || upgrades[key].level < upgrades[key].maxLevel);
+            mapGrid[y][x].mUpgrades = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
+            mapGrid[y][x].rUpgrades = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
+        }
+    }
+}
+
+function startGame(startRep) {
+    for (let key in factions) if (key!=='anarchy') factions[key].rep = startRep;
+    initializeEconomy();
+    document.getElementById('difficulty-layer').classList.add('hidden');
+    showArrivalScreen();
+}
+
+// ==========================================
+// SECTION 6: COMBAT ENGINE & RENDER LOOP    
+// ==========================================
+function equipWeapon(key) { player.activeWeapon = key; renderPauseMenu(); }
+
+function useItemFromMenu(key) {
+    if (inventory[key].qty > 0) {
+        if (key === 'shield' && player.shieldTime <= 0) { inventory.shield.qty--; player.shieldTime = 180; }
+        else if (key === 'bomb') { inventory.bomb.qty--; enemies.forEach(e => e.markedForDelete = true); enemyBullets = []; createExplosion(canvas.width/2, canvas.height/2, '#f0f', 100, 20); screenShake = 30 * DEV.screenShakeMult; }
+        else if (key === 'repair' && player.hp < player.maxHp) { inventory.repair.qty--; player.hp++; createExplosion(player.x, player.y, '#0f0', 30, 5); }
+        renderPauseMenu(); updateCombatHUD(); 
+    }
+}
+
+function spawnLoot(x, y) {
+    let r = Math.random(); let drop = null;
+    if (r < 0.3) drop = { id: 'cash', val: Math.floor(Math.random()*50)+20, color: '#0f0', label: '$' };
+    else if (r < 0.45) drop = { id: 'ammo_rapid', val: 10, color: '#f00', label: 'R' };
+    else if (r < 0.60) drop = { id: 'ammo_spread', val: 5, color: '#f0f', label: 'S' };
+    else if (r < 0.70) drop = { id: 'ammo_laser', val: 2, color: '#0ff', label: 'L' };
+    else if (r < 0.80) drop = { id: 'scrap', val: 1, color: '#fff', label: 'X' };
+    else if (r < 0.90) drop = { id: 'repair', val: 1, color: '#0f0', label: '+' };
+    else if (r < 0.96) drop = { id: 'shield', val: 1, color: '#0ff', label: 'P' };
+    else drop = { id: 'bomb', val: 1, color: '#f0f', label: 'B' };
+    if (drop) drops.push({ x: x, y: y, ...drop, speed: 1.5, size: 16, markedForDelete: false });
+}
+
+function startCombat() {
+    lastFocusedId = null; gameState = 'COMBAT'; document.getElementById('map-layer').classList.add('hidden'); document.getElementById('hud').classList.remove('hidden');
+    keys = {}; player.x = 50; player.y = 300; player.shieldTime = 0; player.shootCooldown = 0; player.isChargingLaser = false; player.burstsRemaining = 0; player.burstDelay = 0; player.heat = 0; player.overheated = false; player.slowTimer = 0; player.growTimer = 0;
+    bullets = []; enemies = []; enemyBullets = []; allyBullets = []; drops = []; particles = []; portal = null; screenShake = 0; combatTimer = maxCombatTimer; 
+    updateCombatHUD(); requestAnimationFrame(gameLoop); 
+}
+
+function endCombat(won) {
+    lastFocusedId = null; document.getElementById('hud').classList.add('hidden'); currX = targetX; currY = targetY;
+    for(let y=0; y<3; y++) { for(let x=0; x<3; x++) { mapGrid[y][x].traded = false; for(let key in mapGrid[y][x].mStock) { let ideal = inventory[key] ? inventory[key].idealStock : 500; if (mapGrid[y][x].s.includes(key)) ideal *= 2.5; if (mapGrid[y][x].d.includes(key)) ideal *= 0.2; mapGrid[y][x].mStock[key] += (ideal - mapGrid[y][x].mStock[key]) * 0.1; if (mapGrid[y][x].rStock[key] !== 0) mapGrid[y][x].rStock[key] = Math.floor(mapGrid[y][x].mStock[key] * 0.3); } } }
+    rollAllUpgrades();
+    if (won) { 
+        currentDay++; if (player.interestRate > 0) playerCash += Math.floor(playerCash * player.interestRate); 
+        let nFac = factions[mapGrid[currY][currX].m]; if (nFac.rep < 0 && playerCash > 0) { let fee = Math.max(1, Math.floor(playerCash * ((Math.floor(Math.random() * 5) + 1) / 100))); playerCash -= fee; alert(`Hostile Port! ${nFac.name} customs seized $${fee}.`); }
+    } else { alert("Ship heavily damaged! Lost credits and cargo."); playerCash = Math.floor(playerCash * 0.5); player.hp = player.maxHp; for(let key in inventory) inventory[key].qty = Math.floor(inventory[key].qty * 0.5); }
+    activeShop = 'MAIN'; clearCart(); calculateCurrentPrices(); showArrivalScreen();
+}
+
+function updateCombatHUD() {
+    document.getElementById('hud-hp').innerText = player.hp; document.getElementById('hud-maxhp').innerText = player.maxHp;
+    let usedCargo = getUsedCargo(); document.getElementById('hud-cargo').innerText = `${Math.ceil(usedCargo)}/${player.maxCargo}`; document.getElementById('hud-cargo').style.color = usedCargo >= player.maxCargo * 0.9 ? '#f00' : '#fff';
+    document.getElementById('hud-time').innerText = Math.ceil(combatTimer / 60); document.getElementById('hud-cash').innerText = playerCash;
+    document.getElementById('hud-shield').innerText = inventory.shield.qty; document.getElementById('hud-bomb').innerText = inventory.bomb.qty; document.getElementById('hud-repair').innerText = inventory.repair.qty;
+    document.getElementById('hud-weapon').innerText = player.activeWeapon.replace('ammo_', '').toUpperCase(); document.getElementById('hud-ammo').innerText = player.activeWeapon === 'ammo_std' ? '∞' : inventory[player.activeWeapon].qty;
+}
+
+function gameLoop() {
+    if (gameState !== 'COMBAT') return; 
+    
+    let activeWidth = player.width;
+    let activeHeight = player.height;
+
+    // ==========================================
+    // PHASE 1: ISOLATED PHYSICS & MOVEMENT
+    // ==========================================
+    try {
+        let activeSpeed = player.slowTimer > 0 ? player.speed * 0.5 : player.speed;
+        activeWidth = player.growTimer > 0 ? player.width * 2 : player.width;
+        activeHeight = player.growTimer > 0 ? player.height * 2 : player.height;
+
+        if (player.slowTimer > 0) player.slowTimer--;
+        if (player.growTimer > 0) player.growTimer--;
+
+        if (keys['ArrowUp'] && player.y > 0) player.y -= activeSpeed;
+        if (keys['ArrowDown'] && player.y < canvas.height - activeHeight) player.y += activeSpeed;
+        if (keys['ArrowLeft'] && player.x > 0) player.x -= activeSpeed;
+        if (keys['ArrowRight'] && player.x < canvas.width - activeWidth) player.x += activeSpeed;
+        
+        if (player.shieldTime > 0) player.shieldTime--; if (player.shootCooldown > 0) player.shootCooldown--;
+        let bw = 8 + (player.caliberLevel * 4); let bh = 4 + (player.caliberLevel * 2);
+
+        if (player.heat > 0) { player.heat -= player.coolingRate; if (player.heat <= 0) { player.heat = 0; player.overheated = false; } }
+
+        if (player.burstsRemaining > 0) {
+            player.burstDelay--;
+            if (player.burstDelay <= 0) {
+                bullets.push({ x: player.x + activeWidth, y: player.y + activeHeight/2 - bh/2, w: bw, h: bh, speed: 14, vy: 0, dmg: player.damage, color: '#f00', markedForDelete: false });
+                player.burstsRemaining--; if (player.burstsRemaining > 0) player.burstDelay = 4;
+            }
+        }
+
+        if (keys['Space'] && player.shootCooldown <= 0 && !player.overheated) {
+            let ammoType = player.activeWeapon;
+            if (ammoType === 'ammo_laser' && inventory.ammo_laser.qty > 0) {
+                player.isChargingLaser = true; player.laserChargeTimer++;
+                if (player.laserChargeTimer > 25) { 
+                    inventory.ammo_laser.qty--; player.heat += 40; if (player.heat >= player.maxHeat) player.overheated = true;
+                    bullets.push({ x: player.x + activeWidth, y: player.y + activeHeight/2 - 5, w: 80, h: 10, speed: 25, vy: 0, dmg: (8 + player.damage), pierce: true, color: '#0ff', markedForDelete: false });
+                    player.shootCooldown = 40; player.isChargingLaser = false; player.laserChargeTimer = 0; updateCombatHUD();
+                }
+            } 
+            else if (ammoType === 'ammo_std' || inventory[ammoType].qty > 0) { 
+                if (ammoType !== 'ammo_std') inventory[ammoType].qty--; 
+                
+                let heatMap = {'ammo_std':8, 'ammo_rapid':18, 'ammo_spread':15, 'ammo_charm':25, 'ammo_rad':20, 'ammo_home':20, 'ammo_grow':20};
+                player.heat += heatMap[ammoType] || 10; if (player.heat >= player.maxHeat) player.overheated = true;
+                
+                let py = player.y + activeHeight/2 - bh/2; let px = player.x + activeWidth; 
+                
+                if (ammoType === 'ammo_std') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 10, vy: 0, dmg: player.damage, color: '#ff0', markedForDelete: false }); player.shootCooldown = 20; } 
+                else if (ammoType === 'ammo_rapid') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 14, vy: 0, dmg: player.damage, color: '#f00', markedForDelete: false }); player.burstsRemaining = 2; player.burstDelay = 4; player.shootCooldown = 25; } 
+                else if (ammoType === 'ammo_spread') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 10, vy: 0, dmg: player.damage, color: '#f0f', markedForDelete: false }); bullets.push({ x: px, y: py, w: bw, h: bh, speed: 10, vy: -2.5, dmg: player.damage, color: '#f0f', markedForDelete: false }); bullets.push({ x: px, y: py, w: bw, h: bh, speed: 10, vy: 2.5, dmg: player.damage, color: '#f0f', markedForDelete: false }); player.shootCooldown = 20; } 
+                else if (ammoType === 'ammo_charm') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 8, vy: 0, dmg: player.damage, charm: true, color: '#f8f', markedForDelete: false }); player.shootCooldown = 25; }
+                else if (ammoType === 'ammo_rad') { bullets.push({ x: px, y: py, w: bw*2, h: bh*2, speed: 8, vy: 0, dmg: player.damage, isRad: true, color: '#0f0', markedForDelete: false }); player.shootCooldown = 30; }
+                else if (ammoType === 'ammo_home') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 12, vy: 0, dmg: player.damage, isHome: true, color: '#0ff', markedForDelete: false }); player.shootCooldown = 20; }
+                else if (ammoType === 'ammo_grow') { bullets.push({ x: px, y: py, w: bw*1.5, h: bh*1.5, speed: 10, vy: 0, dmg: player.damage, isGrow: true, color: '#fff', markedForDelete: false }); player.shootCooldown = 25; }
+                updateCombatHUD();
+            }
+        } else { player.isChargingLaser = false; player.laserChargeTimer = 0; }
+
+        if (combatTimer > 0) {
+            combatTimer--; if (combatTimer % 60 === 0) updateCombatHUD();
+            if (combatTimer <= 0 && !portal) portal = { x: canvas.width + 50, y: canvas.height/2 - 40, width: 40, height: 80, speed: 1.5 };
+        }
+
+        if (portal) {
+            if (portal.x > canvas.width - 80) portal.x -= portal.speed;
+            if (player.x < portal.x + portal.width && player.x + activeWidth > portal.x && player.y < portal.y + portal.height && player.y + activeHeight > portal.y) { endCombat(true); return; }
+        }
+
+        // SPAWNING
+        if (combatTimer > 0 && Math.random() < DEV.enemySpawnRate && enemies.filter(e=>!e.charmed && !e.markedForDelete).length < 10) {
+            let progress = 1 - (combatTimer / maxCombatTimer);
+            let depLoc = mapGrid[currY][currX]; let arrLoc = mapGrid[targetY][targetX];
+            let spawnPool = [{f: 'anarchy', w: 1}];
+            let depW = Math.max(0, 1 - progress * 1.5); let arrW = Math.max(0, progress * 1.5 - 0.5);
+            [depLoc.m, depLoc.r].forEach(f => { let rep = factions[f].rep; if(rep < 0) spawnPool.push({f: f, w: depW * (Math.abs(rep)/50)}); });
+            [arrLoc.m, arrLoc.r].forEach(f => { let rep = factions[f].rep; if(rep < 0) spawnPool.push({f: f, w: arrW * (Math.abs(rep)/50)}); });
+            
+            let totalW = spawnPool.reduce((sum, p) => sum + p.w, 0); let roll = Math.random() * totalW; let chosenFac = 'anarchy';
+            for(let p of spawnPool) { roll -= p.w; if (roll <= 0) { chosenFac = p.f; break; } }
+
+            let types = ['grunt', 'sniper', 'brute', 'swarmer']; if (chosenFac !== 'anarchy') types.push('special');
+            let bType = types[Math.floor(Math.random() * types.length)];
+            
+            let baseSpawnY = Math.random()*(canvas.height-30);
+            let e = { faction: chosenFac, baseType: bType, color: factions[chosenFac].color, charmed: false, x: canvas.width, y: baseSpawnY, startY: baseSpawnY, speed: 1, targetY: Math.random()*(canvas.height-30), shootCooldown: 60, hp: 2, maxHp: 2, vx: 0, vy: 0, markedForDelete: false, width: 25, height: 25, lastHp: 2 };
+            
+            if (bType === 'grunt') { e.speed=1.5; e.hp=2; e.maxHp=2; } 
+            else if (bType === 'sniper') { e.speed=1; e.hp=1; e.maxHp=1; e.shootCooldown=120; } 
+            else if (bType === 'brute') { e.speed=0.8; e.hp=5; e.maxHp=5; e.width=35; e.height=35; } 
+            else if (bType === 'swarmer') { e.speed=2.5; e.hp=1; e.maxHp=1; e.width=15; e.height=15; } 
+            else if (bType === 'special') { 
+                e.width=30; e.height=30; e.hp=4; e.maxHp=4; e.speed=1.2;
+                if(chosenFac==='beta') e.shield = 3; 
+            }
+
+            if (chosenFac === 'alpha') { e.dmgMult = 2; } if (chosenFac === 'beta') { e.hp *= 2; e.maxHp *= 2; }
+            enemies.push(e);
+        }
+
+    } catch (error) { console.error("[CRITICAL] Physics Phase Error:", error); }
+
+    // ==========================================
+    // PHASE 2: ISOLATED COLLISIONS
+    // ==========================================
+    try {
+        particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life--; if(p.life <= 0) p.markedForDelete = true; });
+
+        bullets.forEach(b => {
+            if (b.markedForDelete) return;
+            if (b.isHome) {
+                let closest = null; let minDist = 300;
+                enemies.forEach(e => { if(!e.charmed && !e.markedForDelete) { let dist = Math.hypot(e.x - b.x, e.y - b.y); if(dist < minDist && b.x < e.x) { minDist = dist; closest = e; } } });
+                if (closest) b.vy += (closest.y + closest.height/2 - b.y) * 0.05;
+            }
+            b.x += b.speed; b.y += b.vy; 
+            if (b.x > canvas.width || b.y < 0 || b.y > canvas.height) b.markedForDelete = true;
+        });
+
+        enemyBullets.forEach(eb => {
+            if (eb.markedForDelete) return;
+            if (eb.isHome) { eb.vy += (player.y + activeHeight/2 - eb.y) * 0.02; }
+            eb.x -= eb.speed; if (eb.vy) eb.y += eb.vy;
+            if (eb.x < 0 || eb.y < 0 || eb.y > canvas.height) eb.markedForDelete = true;
+            else if (player.shieldTime <= 0 && eb.x < player.x + activeWidth && eb.x + 8 > player.x && eb.y < player.y + activeHeight && eb.y + 8 > player.y) { 
+                player.hp -= eb.dmg; eb.markedForDelete = true; screenShake = 20; createExplosion(player.x + activeWidth/2, player.y + activeHeight/2, '#f00', 30, 8); 
+                if (eb.isRad) player.slowTimer = 120; if (eb.isGrow) player.growTimer = 120;
+                updateCombatHUD(); if (player.hp <= 0) { endCombat(false); return; } 
+            }
+        });
+
+        allyBullets.forEach(ab => { ab.x += ab.speed; if (ab.x > canvas.width) ab.markedForDelete = true; });
+
+        drops.forEach(d => {
+            if (d.markedForDelete) return;
+            let px = player.x + activeWidth/2; let py = player.y + activeHeight/2; let dist = Math.hypot(px - d.x, py - d.y);
+            if (dist < player.magnetRange) { d.x += (px - d.x) * 0.08; d.y += (py - d.y) * 0.08; } else { d.x -= d.speed; }
+            if (d.x < -20) { d.markedForDelete = true; return; }
+            if (d.x < player.x + activeWidth && d.x + d.size > player.x && d.y < player.y + activeHeight && d.y + d.size > player.y) {
+                if (d.id === 'cash') { playerCash += d.val; updateCombatHUD(); } 
+                else if (inventory[d.id]) { 
+                    let spaceAvail = player.maxCargo - getUsedCargo(); let sizeNeeded = inventory[d.id].size * d.val;
+                    if (spaceAvail >= sizeNeeded) { inventory[d.id].qty += d.val; updateCombatHUD(); } 
+                    else if (spaceAvail >= inventory[d.id].size) { let fitQty = Math.floor(spaceAvail / inventory[d.id].size); inventory[d.id].qty += fitQty; d.val -= fitQty; updateCombatHUD(); }
+                } 
+                d.markedForDelete = true;
+            }
+        });
+
+        enemies.forEach(e => { 
+            if (e.markedForDelete) return;
+            
+            if (e.faction === 'gamma' && e.baseType === 'special') {
+                particles.push({x: e.x+e.width/2, y: e.y+e.height/2, vx:0, vy:0, life:2, color:'rgba(0,255,0,0.1)', size: 150, markedForDelete:false});
+                enemies.forEach(o => { if(o!==e && !o.markedForDelete && Math.hypot(o.x-e.x, o.y-e.y)<75) o.x -= 0.5; });
+            }
+            if (e.faction === 'delta' && e.baseType === 'special' && e.hp < e.lastHp) {
+                let peers = enemies.filter(o => o!==e && !o.markedForDelete && o.x > canvas.width/2);
+                if (peers.length > 0) { let p = peers[Math.floor(Math.random()*peers.length)]; let tx=e.x; let ty=e.y; e.x=p.x; e.y=p.y; p.x=tx; p.y=ty; createExplosion(e.x, e.y, '#aa00ff', 10, 5); } e.lastHp = Math.max(0, e.hp);
+            }
+            if (e.faction === 'epsilon') { e.targetY = player.y; }
+            if (e.faction === 'zeta' && e.baseType === 'special') { bullets.forEach(b => { if(!b.markedForDelete && Math.abs(b.x - e.x) < 100 && Math.abs(b.y - e.y) < 30) { e.targetY = e.y > b.y ? e.y + 50 : e.y - 50; } }); }
+            if (e.faction === 'eta' && e.baseType !== 'special') { e.y = e.startY + Math.sin(combatTimer * 0.1) * 40; }
+            if (e.faction === 'eta' && e.baseType === 'special') { e.y = e.startY + Math.sin(combatTimer * 0.05) * 100; e.x += Math.cos(combatTimer * 0.1) * 2; }
+            if (e.faction === 'theta' && e.baseType === 'special') { enemies.forEach(o => { if(o.baseType==='swarmer' && !o.markedForDelete && o.x > e.x) { o.targetY = player.y; o.x -= 1; } }); }
+
+            if (e.charmed) { e.x += e.speed; if (e.x > canvas.width) e.markedForDelete = true; } 
+            else {
+                if (e.baseType === 'swarmer') { e.x -= e.speed; e.y += (player.y - e.y) * 0.02; }
+                else { if (e.x > canvas.width - 200) e.x -= e.speed; else { if (Math.abs(e.y - e.targetY) < 5) e.targetY = Math.random() * (canvas.height - e.height); e.y += e.y < e.targetY ? e.speed * 0.4 : -e.speed * 0.4; } }
+                
+                e.shootCooldown--;
+                if (e.shootCooldown <= 0) { 
+                    let dmg = e.dmgMult || 1;
+                    if (e.faction === 'alpha' && e.baseType === 'special') { enemyBullets.push({x: e.x, y: e.y+e.height/2-2, speed: 15, vy: 0, dmg: dmg*2, isHome: false, color: '#ff0055', markedForDelete:false}); e.shootCooldown = 90; }
+                    else if (e.faction === 'epsilon' && e.baseType === 'special') { enemyBullets.push({x: e.x, y: e.y+e.height/2, speed: 6, vy: 0, dmg: dmg, isHome: true, color: '#ffaa00', markedForDelete:false}); e.shootCooldown = 120; }
+                    else if (e.faction === 'gamma') { enemyBullets.push({x: e.x, y: e.y+e.height/2, speed: 5, vy: 0, dmg: dmg, isRad: true, color: '#00ff55', markedForDelete:false}); e.shootCooldown = 100; }
+                    else if (e.faction === 'iota' && e.baseType === 'special') { enemyBullets.push({x: e.x, y: e.y+e.height/2, speed: 7, vy: 0, dmg: dmg, isGrow: true, color: '#fff', markedForDelete:false}); e.shootCooldown = 120; }
+                    else if (e.baseType === 'sniper') { enemyBullets.push({x: e.x, y: e.y+e.height/2, speed: 12, vy: 0, dmg: dmg, markedForDelete:false}); e.shootCooldown = 120; }
+                    else if (e.baseType !== 'swarmer') { enemyBullets.push({x: e.x, y: e.y+e.height/2, speed: 5, vy: 0, dmg: dmg, markedForDelete:false}); e.shootCooldown = 90; }
+                }
+            }
+
+            // BULLET TO ENEMY HIT LOGIC (Fully Inline & Sandboxed)
+            bullets.forEach(b => {
+                if (b.markedForDelete) return;
+                if (b.x > e.x && b.x < e.x + e.width && b.y > e.y && b.y < e.y + e.height) {
+                    if (b.charm && !e.charmed) { 
+                        e.charmed = true; e.color = '#f8f'; 
+                        createExplosion(e.x, e.y, '#f8f', 15, 6); 
+                    } 
+                    else if (!e.charmed) { 
+                        if (!b.hitList) b.hitList = new Set();
+                        if (!b.hitList.has(e)) {
+                            if (b.isRad) { e.speed *= 0.5; particles.push({x:e.x, y:e.y, vx:0, vy:0, life:60, color:'rgba(0,255,0,0.2)', size:50, markedForDelete:false}); }
+                            if (b.isGrow) { e.width *= 1.5; e.height *= 1.5; e.speed *= 0.8; }
+                            
+                            // Apply Damage Safely
+                            if (e.shield > 0) { 
+                                e.shield--; createExplosion(e.x, e.y, '#0055ff', 5, 3); 
+                            } else {
+                                e.hp -= (b.dmg || 1); 
+                                e.lastHp = Math.max(0, e.hp); 
+                                createExplosion(e.x, e.y, '#ff0', 5, 3);
+                                
+                                if (e.hp <= 0) { 
+                                    e.markedForDelete = true; 
+                                    createExplosion(e.x + e.width/2, e.y + e.height/2, e.color, 25, 8); 
+                                    let dropMap = {alpha:'ammo_laser', beta:'shield', gamma:'ammo_rad', delta:'ammo_spread', epsilon:'ammo_home', zeta:'ammo_rapid', eta:'bomb', theta:'ammo_charm', iota:'ammo_grow'};
+                                    let dropId = e.baseType === 'special' ? dropMap[e.faction] : null;
+                                    
+                                    if (dropId) {
+                                        let lbl = dropId.replace('ammo_', '').substring(0,1).toUpperCase();
+                                        drops.push({x: e.x, y: e.y, id: dropId, val: 2, color: e.color, label: lbl, speed: 1.5, size: 16, markedForDelete: false});
+                                    } else {
+                                        spawnLoot(e.x+e.width/2, e.y+e.height/2); 
+                                    }
+                                }
+                            }
+                            b.hitList.add(e); 
+                        }
+                    }
+                    if (!b.pierce) b.markedForDelete = true;
+                }
+            });
+
+            // ALLY BULLETS HITTING ENEMIES
+            allyBullets.forEach(ab => {
+                if (ab.markedForDelete) return;
+                if (ab.x > e.x && ab.x < e.x + e.width && ab.y > e.y && ab.y < e.y + e.height) { 
+                    e.hp -= 1; e.lastHp = Math.max(0, e.hp);
+                    if (e.hp <= 0) { e.markedForDelete = true; createExplosion(e.x + e.width/2, e.y + e.height/2, e.color, 25, 8); spawnLoot(e.x+e.width/2, e.y+e.height/2); }
+                    ab.markedForDelete = true; 
+                }
+            });
+
+            // CHARMED ENEMIES COLLIDING
+            if (!e.charmed) {
+                enemies.forEach(other => { 
+                    if (other.charmed && !other.markedForDelete) { 
+                        if (e.x < other.x + other.width && e.x + e.width > other.x && e.y < other.y + other.height && e.y + e.height > other.y) { 
+                            e.hp -= 2; e.lastHp = Math.max(0, e.hp);
+                            other.hp -= 2; other.lastHp = Math.max(0, other.hp);
+                            if(other.hp<=0) other.markedForDelete = true; 
+                            if (e.hp <= 0) { e.markedForDelete = true; createExplosion(e.x + e.width/2, e.y + e.height/2, e.color, 25, 8); spawnLoot(e.x+e.width/2, e.y+e.height/2); }
+                        } 
+                    } 
+                });
+            }
+
+            // ENEMY CRASHING INTO PLAYER
+            if (!e.charmed && !e.markedForDelete && player.shieldTime <= 0 && e.x < player.x + activeWidth && e.x + e.width > player.x && e.y < player.y + activeHeight && e.y + e.height > player.y) {
+                player.hp -= (e.dmgMult || 1); screenShake = 20; createExplosion(player.x, player.y, '#f00', 30, 8); updateCombatHUD(); 
+                e.hp = 0; e.lastHp = 0; e.markedForDelete = true; createExplosion(e.x + e.width/2, e.y + e.height/2, e.color, 25, 8); spawnLoot(e.x+e.width/2, e.y+e.height/2);
+                if (player.hp <= 0) { endCombat(false); return; }
+            }
+        });
+
+    } catch (error) { console.error("[CRITICAL] Collision Phase Error:", error); }
+
+
+    // ==========================================
+    // PHASE 3: ISOLATED GARBAGE COLLECTION
+    // ==========================================
+    try {
+        particles = particles.filter(p => !p.markedForDelete);
+        bullets = bullets.filter(b => !b.markedForDelete);
+        enemyBullets = enemyBullets.filter(eb => !eb.markedForDelete);
+        allyBullets = allyBullets.filter(ab => !ab.markedForDelete);
+        drops = drops.filter(d => !d.markedForDelete);
+        enemies = enemies.filter(e => !e.markedForDelete); 
+    } catch (error) { console.error("[CRITICAL] Garbage Collection Error:", error); }
+
+
+    // ==========================================
+    // PHASE 4: ISOLATED RENDER LOOP
+    // ==========================================
+    try {
+        ctx.save();
+        if (screenShake > 0) { let dx = (Math.random() - 0.5) * screenShake; let dy = (Math.random() - 0.5) * screenShake; ctx.translate(dx, dy); screenShake--; }
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(2, 2, 8, 0.35)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)'; ctx.lineWidth = 1; ctx.beginPath();
+        let offset = combatTimer % 40; 
+        for (let x = offset - 40; x < canvas.width; x += 40) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+        for (let y = 0; y < canvas.height; y += 40) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+        ctx.stroke();
+
+        ctx.globalCompositeOperation = 'lighter';
+
+        let pColor = '#0f0'; if (player.hp <= player.maxHp / 2 && player.hp > 1) pColor = '#ff0'; if (player.hp === 1) pColor = '#f00';
+        let activeWidth = player.growTimer > 0 ? player.width * 2 : player.width;
+        let activeHeight = player.growTimer > 0 ? player.height * 2 : player.height;
+
+        ctx.save(); ctx.translate(player.x + activeWidth/2, player.y + activeHeight/2);
+        ctx.shadowColor = pColor; ctx.shadowBlur = 15; ctx.strokeStyle = pColor; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(activeWidth/2, 0); ctx.lineTo(-activeWidth/2, activeHeight/2); ctx.lineTo(-activeWidth/4, 0); ctx.lineTo(-activeWidth/2, -activeHeight/2); ctx.closePath(); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.shadowBlur = 5; ctx.beginPath(); ctx.arc(-activeWidth/4, 0, 3, 0, Math.PI*2); ctx.fill();
+        if (player.shieldTime > 0) { ctx.shadowColor = '#0ff'; ctx.strokeStyle = '#0ff'; ctx.shadowBlur = 20; ctx.beginPath(); ctx.arc(0, 0, Math.max(activeWidth, activeHeight) + 5, 0, Math.PI*2); ctx.stroke(); }
+        ctx.restore();
+
+        if (player.isChargingLaser) { ctx.fillStyle = '#fff'; ctx.shadowColor = '#0ff'; ctx.shadowBlur = 15; ctx.fillRect(player.x + activeWidth, player.y + activeHeight/2 - 2, player.laserChargeTimer, 4); }
+        
+        bullets.forEach(b => { ctx.shadowColor = b.color; ctx.shadowBlur = 10; ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.fillStyle = '#fff'; ctx.fillRect(b.x+b.w/2, b.y+1, b.w/2, b.h-2); });
+        enemyBullets.forEach(eb => { let col = eb.color || '#f80'; ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(eb.x+4, eb.y+4, eb.isRad?8:4, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(eb.x+4, eb.y+4, 2, 0, Math.PI*2); ctx.fill(); });
+        allyBullets.forEach(ab => { ctx.shadowColor = '#f8f'; ctx.shadowBlur = 10; ctx.fillStyle = '#f8f'; ctx.fillRect(ab.x, ab.y, 8, 4); });
+        particles.forEach(p => { ctx.shadowColor = p.color; ctx.shadowBlur = 10; ctx.fillStyle = p.color; if (p.size > 20) { ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill(); } else { ctx.fillRect(p.x, p.y, p.size, p.size); } });
+
+        drops.forEach(d => { 
+            ctx.save(); ctx.translate(d.x + d.size/2, d.y + d.size/2); ctx.shadowColor = d.color; ctx.shadowBlur = 15; ctx.strokeStyle = d.color; ctx.lineWidth = 2; ctx.rotate(combatTimer * 0.05); ctx.strokeRect(-d.size/2, -d.size/2, d.size, d.size); ctx.restore();
+            ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0; ctx.fillStyle = d.color; ctx.font = 'bold 12px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(d.label, d.x + d.size/2, d.y + d.size/2); ctx.globalCompositeOperation = 'lighter';
+        });
+
+        if (portal) {
+            ctx.save(); ctx.translate(portal.x + portal.width/2, portal.y + portal.height/2); ctx.rotate(combatTimer * 0.05); ctx.shadowColor = '#0ff'; ctx.shadowBlur = 20; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 0, portal.width/2 + Math.sin(combatTimer*0.1)*5, portal.height/2 + Math.cos(combatTimer*0.1)*10, 0, 0, Math.PI*2); ctx.stroke(); ctx.rotate(combatTimer * -0.1); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(-10, -10, 20, 20); ctx.restore();
+            ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0; ctx.fillStyle = '#0ff'; ctx.font = "bold 14px monospace"; ctx.textAlign = 'center'; ctx.fillText("JUMP", portal.x + portal.width/2, portal.y - 15); ctx.textAlign = 'left'; ctx.globalCompositeOperation = 'lighter';
+        }
+
+        enemies.forEach(e => { 
+            ctx.save(); ctx.translate(e.x + e.width/2, e.y + e.height/2); ctx.shadowColor = e.color; ctx.shadowBlur = 15; ctx.strokeStyle = e.color; ctx.lineWidth = 2; ctx.beginPath();
+            if (e.charmed) { ctx.shadowColor = '#f8f'; ctx.strokeStyle = '#f8f'; }
+            if (e.baseType === 'grunt') { ctx.moveTo(0, -e.height/2); ctx.lineTo(e.width/2, 0); ctx.lineTo(0, e.height/2); ctx.lineTo(-e.width/2, 0); ctx.closePath(); } 
+            else if (e.baseType === 'sniper') { ctx.moveTo(-e.width/2, 0); ctx.lineTo(e.width/2, e.height/2); ctx.lineTo(e.width/2, -e.height/2); ctx.closePath(); } 
+            else if (e.baseType === 'brute') { ctx.rotate(combatTimer * -0.05); ctx.rect(-e.width/2, -e.height/2, e.width, e.height); ctx.moveTo(-e.width/2, -e.height/2); ctx.lineTo(e.width/2, e.height/2); ctx.moveTo(e.width/2, -e.height/2); ctx.lineTo(-e.width/2, e.height/2); } 
+            else if (e.baseType === 'swarmer') { ctx.arc(0,0, e.width/2, 0, Math.PI*2); }
+            else { ctx.rotate(combatTimer * 0.02); for (let i=0; i<6; i++) { let angle = i * Math.PI / 3; let px = Math.cos(angle) * e.width/2; let py = Math.sin(angle) * e.height/2; if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py); } ctx.closePath(); ctx.moveTo(0,0); ctx.lineTo(e.width/2, 0); }
+            ctx.stroke();
+            
+            if (e.shield > 0) { ctx.beginPath(); ctx.arc(0,0,e.width,0,Math.PI*2); ctx.strokeStyle='#0055ff'; ctx.stroke(); }
+            ctx.fillStyle = '#fff'; ctx.shadowBlur = 5; ctx.beginPath(); ctx.arc(0, 0, 2, 0, Math.PI*2); ctx.fill(); ctx.restore();
+            
+            ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0;
+            if(e.maxHp > 2 && !e.charmed) { 
+                // FAILSAFE CLAMPING MATH: Prevents extending bar if health is negative
+                let safeHp = Math.max(0, e.hp);
+                let safeMax = Math.max(1, e.maxHp);
+                let hpRatio = safeHp / safeMax;
+                
+                ctx.fillStyle = '#f00'; ctx.fillRect(e.x, e.y - 8, e.width, 3); 
+                ctx.fillStyle = '#0f0'; ctx.fillRect(e.x, e.y - 8, e.width * hpRatio, 3); 
+            }
+            ctx.globalCompositeOperation = 'lighter';
+        });
+
+        ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0;
+        if (player.hp === 1) { let pulse = (Math.sin(combatTimer * 0.1) + 1) / 2; ctx.fillStyle = `rgba(255, 0, 0, ${pulse * 0.15})`; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = `rgba(255, 0, 0, ${pulse})`; ctx.shadowBlur = 10; ctx.shadowColor = '#f00'; ctx.font = 'bold 24px monospace'; ctx.textAlign = 'center'; ctx.fillText("CRITICAL DAMAGE", canvas.width / 2, 50); ctx.textAlign = 'left'; ctx.shadowBlur = 0; }
+
+        let barW = 200; let barH = 12; let barX = 10; let barY = canvas.height - 25;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; ctx.fillRect(barX, barY, barW, barH); ctx.strokeStyle = '#444'; ctx.strokeRect(barX, barY, barW, barH);
+        let heatPct = Math.min(1, Math.max(0, player.heat / player.maxHeat));
+        if (player.overheated) { ctx.fillStyle = (Math.floor(combatTimer / 5) % 2 === 0) ? '#f00' : '#800'; } else { ctx.fillStyle = heatPct > 0.75 ? '#f80' : '#0cf'; }
+        ctx.fillRect(barX + 1, barY + 1, (barW - 2) * heatPct, barH - 2);
+        ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 10; ctx.fillStyle = '#fff'; ctx.font = '10px monospace';
+        ctx.fillText(player.overheated ? 'SYSTEM OVERHEATED' : 'WEAPON HEAT', barX, barY - 5);
+        
+        ctx.restore(); 
+    } catch (error) { console.error("[CRITICAL] Render Phase Error:", error); }
+    
+    // Safety lock: Loop ALWAYS requests next frame regardless of phase errors
+    requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>
