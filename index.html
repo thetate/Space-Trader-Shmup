@@ -24,7 +24,9 @@
         ::-webkit-scrollbar-thumb:hover { background: #0ff; box-shadow: 0 0 15px #0ff; }
 
         .layout-grid { display: flex; gap: 15px; height: 350px; }
-        .column { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding-right: 10px; }
+        .column { display: flex; flex-direction: column; overflow-y: auto; padding-right: 10px; }
+        .col-market { flex: 1.4; } 
+        .col-shipyard { flex: 1; }
         
         button { background: transparent; color: #0f0; border: 1px solid #0f0; box-shadow: 0 0 5px #0f0, inset 0 0 5px #0f0; text-shadow: 0 0 5px #0f0; padding: 4px 8px; cursor: pointer; font-family: monospace; font-size: 12px; margin-left: 2px; transition: all 0.1s; text-transform: uppercase; font-weight: bold;}
         button:hover { background: #0f0; color: #000; text-shadow: none; box-shadow: 0 0 15px #0f0; }
@@ -38,9 +40,14 @@
         
         button:focus, .faction-tab:focus, summary:focus, .intercom-box:focus { outline: 2px solid #fff !important; outline-offset: 2px; transform: scale(1.02); z-index: 10; position: relative; box-shadow: 0 0 20px #fff, inset 0 0 10px #fff !important;}
         
-        .terminal-table { display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap: 5px; font-size: 12px; margin-bottom: 5px; align-items: center; background: rgba(0, 20, 30, 0.4); padding: 5px; border-left: 2px solid rgba(0,255,255,0.3); }
+        .terminal-table { display: grid; grid-template-columns: 1.4fr 1.3fr 1fr 1fr; gap: 5px; font-size: 11px; margin-bottom: 5px; align-items: center; background: rgba(0, 20, 30, 0.4); padding: 5px; border-left: 2px solid rgba(0,255,255,0.3); }
         .terminal-table:hover { background: rgba(0, 40, 60, 0.6); border-left: 2px solid #0ff;}
         .terminal-header { font-weight: bold; color: #0ff; border-bottom: 1px solid rgba(0,255,255,0.3); padding-bottom: 5px; margin-bottom: 10px; }
+        
+        /* New Action Button Grid */
+        .action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+        .action-btns button { margin: 0; padding: 4px 2px; font-size: 10px; width: 100%; text-align: center; }
+
         .upgrade-item { margin: 5px 0; padding: 8px; border: 1px solid rgba(255, 0, 255, 0.4); box-shadow: inset 0 0 10px rgba(255, 0, 255, 0.1); background: rgba(40, 0, 40, 0.4); display: flex; justify-content: space-between; align-items: center; font-size: 13px;}
         
         .tab-container { display: flex; gap: 10px; margin-bottom: 10px; border-bottom: 1px solid rgba(0, 255, 255, 0.3); padding-bottom: 10px; box-shadow: 0 5px 5px -5px rgba(0,255,255,0.2);}
@@ -81,17 +88,24 @@
     </style>
 </head>
 <body>
+<div id="gemini-debugger" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(150, 0, 0, 0.95); z-index: 999999; padding: 40px; box-sizing: border-box; color: #fff; font-family: monospace; overflow-y: auto;">
+    <h1 style="color: #ff0; text-shadow: 0 0 10px #ff0; margin-top: 0;">FATAL ERROR INTERCEPTED</h1>
+    <p>Copy the text below and send it to Gemini:</p>
+    <textarea id="debug-log" style="width: 100%; height: 300px; background: #000; color: #0f0; border: 2px solid #ff0; padding: 10px; font-family: monospace; font-size: 14px;" readonly></textarea>
+    <br><br>
+    <button onclick="document.getElementById('debug-log').select(); document.execCommand('copy'); alert('Copied to clipboard!');" style="padding: 15px 30px; font-size: 18px; background: #000; color: #ff0; border: 2px solid #ff0; cursor: pointer; text-transform: uppercase; font-weight: bold;">Copy Error Log</button>
+</div>
 
 <div id="game-container">
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <div id="difficulty-layer" class="overlay" style="justify-content: center; align-items: center; z-index: 100;">
         <h1 style="color: #0ff; font-size: 48px; margin-bottom: 5px; text-shadow: 0 0 15px #0ff, 0 0 30px #0ff;">SPACE TRADER SHMUP</h1>
-        <p style="color: #aaa; margin-bottom: 40px; text-align: center; max-width: 500px; text-shadow: 0 0 5px #aaa;">Your starting reputation dictates market prices and enemy hostility.<br>Use Mouse or Arrow Keys to navigate.</p>
-        <div style="display: flex; flex-direction: column; align-items: center;">
-            <button class="diff-btn" data-nav-id="diff-easy" style="color: #0f0; border-color: #0f0; box-shadow: 0 0 15px #0f0, inset 0 0 10px #0f0; text-shadow: 0 0 10px #0f0;" onclick="startGame(-10)">EASY (Rep: -10)</button>
-            <button class="diff-btn" data-nav-id="diff-med" style="color: #ff0; border-color: #ff0; box-shadow: 0 0 15px #ff0, inset 0 0 10px #ff0; text-shadow: 0 0 10px #ff0;" onclick="startGame(-30)">MEDIUM (Rep: -30)</button>
-            <button class="diff-btn" data-nav-id="diff-hard" style="color: #f00; border-color: #f00; box-shadow: 0 0 15px #f00, inset 0 0 10px #f00; text-shadow: 0 0 10px #f00;" onclick="startGame(-50)">HARD (Rep: -50)</button>
+        <p style="color: #aaa; margin-bottom: 40px; text-align: center; max-width: 500px; text-shadow: 0 0 5px #aaa;">Secure a starting loan to fund your expedition.<br>Failing to repay within the hop limit puts a bounty on your head.</p>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 15px;">
+            <button class="diff-btn" style="color: #ff0055; border-color: #ff0055; box-shadow: 0 0 15px #ff0055, inset 0 0 10px #ff0055; text-shadow: 0 0 10px #ff0055;" onclick="startWithLoan('alpha', 500, 750, 4)">ALPHA SYNDICATE<br><span style="font-size:12px;color:#ccc;text-shadow:none;">Loan: $500 | Repay: $750 | Time: 4 Hops</span></button>
+            <button class="diff-btn" style="color: #0055ff; border-color: #0055ff; box-shadow: 0 0 15px #0055ff, inset 0 0 10px #0055ff; text-shadow: 0 0 10px #0055ff;" onclick="startWithLoan('beta', 1000, 1600, 6)">BETA BASTION<br><span style="font-size:12px;color:#ccc;text-shadow:none;">Loan: $1000 | Repay: $1600 | Time: 6 Hops</span></button>
+            <button class="diff-btn" style="color: #00ff55; border-color: #00ff55; box-shadow: 0 0 15px #00ff55, inset 0 0 10px #00ff55; text-shadow: 0 0 10px #00ff55;" onclick="startWithLoan('gamma', 2000, 3500, 8)">GAMMA CORE<br><span style="font-size:12px;color:#ccc;text-shadow:none;">Loan: $2000 | Repay: $3500 | Time: 8 Hops</span></button>
         </div>
     </div>
 
@@ -124,14 +138,16 @@
         <div class="tab-container" id="faction-tabs"></div>
 
         <div class="layout-grid">
-            <div class="column">
+            <div class="column col-market">
                 <h3 style="color: #0ff;">Market Terminal</h3>
-                <div class="terminal-table terminal-header">
-                    <div>COMMODITY</div><div>PRICE (BASE)</div><div>INVENTORY</div><div>ACTION</div>
+                <div class="terminal-table terminal-header" style="background:transparent; border:none;">
+                    <div>COMMODITY</div><div>PRICE (BASE)</div><div>INVENTORY</div><div style="text-align:center;">ACTION</div>
                 </div>
                 <div id="market-items"></div>
             </div>
-            <div class="column">
+            <div class="column col-shipyard">
+                <h3 style="color: #ffaa00;">Faction Bank</h3>
+                <div id="bank-panel" style="margin-bottom: 20px;"></div>
                 <h3 style="color: #f0f;">Shipyard Upgrades</h3>
                 <div id="upgrade-items"></div>
             </div>
@@ -141,7 +157,7 @@
             <div><strong style="color:#0ff;">Pending Manifest:</strong> Net Cash <span id="cart-net-cash" style="font-weight:bold; font-size: 16px;">$0</span> | Net Cargo <span id="cart-net-cargo" style="font-weight:bold; font-size: 16px;">0</span></div>
             <div>
                 <button data-nav-id="btn-clear" class="sell" onclick="clearCart()">Clear Cart</button>
-                <button data-nav-id="btn-submit" class="upg" style="padding: 8px 16px; font-size: 14px;" onclick="submitCart()">Submit Trade</button>
+                <button id="btn-submit" data-nav-id="btn-submit" class="upg" style="padding: 8px 16px; font-size: 14px;" onclick="submitCart()">Submit Trade</button>
             </div>
         </div>
         <button data-nav-id="btn-map" style="margin-top: 15px; padding: 12px; font-size: 16px; width: 100%; color: #0ff; border-color: #0ff; box-shadow: 0 0 10px #0ff, inset 0 0 10px #0ff;" onclick="openMap()">PLOT COURSE (OPEN MAP)</button>
@@ -172,9 +188,49 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// ==========================================
+// SECTION 1.5: GLOBAL FATAL ERROR TRAP
+// ==========================================
+function triggerDebugger(source, errorObj, customMsg = "") {
+    document.getElementById('gemini-debugger').style.display = 'block';
+    const logObj = document.getElementById('debug-log');
+    let output = `[SOURCE]: ${source}\n`;
+    if (customMsg) output += `[STATE]: ${customMsg}\n`;
+    if (errorObj) {
+        output += `[MESSAGE]: ${errorObj.message || errorObj}\n`;
+        output += `[STACK]: \n${errorObj.stack || 'No stack trace available'}\n`;
+    }
+    logObj.value += output + "\n-----------------------------------\n";
+    gameState = 'FROZEN'; // Force engine stop
+}
+
+window.addEventListener('error', (event) => {
+    triggerDebugger('Window Error', event.error, `File: ${event.filename} | Line: ${event.lineno}`);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    triggerDebugger('Promise Rejection', event.reason);
+});
+
+let gamepadIndex = null;
+
+window.addEventListener("gamepadconnected", (e) => {
+    console.log("Gamepad connected at index %d: %s. %d buttons, %d axes.",
+        e.gamepad.index, e.gamepad.id, e.gamepad.buttons.length, e.gamepad.axes.length);
+    gamepadIndex = e.gamepad.index;
+});
+
+window.addEventListener("gamepaddisconnected", (e) => {
+    console.log("Gamepad disconnected from index %d", e.gamepad.index);
+    gamepadIndex = null;
+});
+
+// For menu navigation debounce
+let lastGpBtnState = {};
+
 let gameState = 'START'; 
 let playerCash = 500; let currentDay = 1; let combatTimer = 0; let maxCombatTimer = 30 * 60;
-let activeShop = 'MAIN'; let preDevState = 'MARKET'; 
+let activeShop = 'MAIN'; let preDevState = 'MARKET'; let lastFocusedId = null;
 
 let particles = []; let screenShake = 0; let portal = null;
 let stagedCart = {}; let stagedUpgrades = []; 
@@ -182,9 +238,26 @@ let bullets = []; let enemies = []; let enemyBullets = []; let allyBullets = [];
 
 let player = { 
     x: 50, y: 300, width: 30, height: 20, speed: 3, maxHp: 3, hp: 3, damage: 1, maxCargo: 100,
-    shieldTime: 0, shootCooldown: 0, activeWeapon: 'ammo_std', magnetRange: 40, caliberLevel: 0, interestRate: 0, hasAnalytics: false,
+    shieldTime: 0, shootCooldown: 0, activeWeapon: 'wpn_std', magnetRange: 40, caliberLevel: 0, interestRate: 0, hasAnalytics: false,
     isChargingLaser: false, laserChargeTimer: 0, burstsRemaining: 0, burstDelay: 0, heat: 0, maxHeat: 80, coolingRate: 0.3, overheated: false,
-    slowTimer: 0, growTimer: 0
+    slowTimer: 0, growTimer: 0, invuln: 0 // <-- Added invincibility frames
+};
+
+const factionWeapons = { alpha:'wpn_laser', beta:'shield', gamma:'wpn_rad', delta:'wpn_spread', epsilon:'wpn_home', zeta:'wpn_rapid', eta:'bomb', theta:'wpn_charm', iota:'wpn_grow', anarchy: null };
+
+// Radically adjusted prices and stock levels for power-ups
+const inventory = {
+    wpn_rapid: { name: 'Burst Core', qty: 0, basePrice: 150, idealStock: 10, size: 2 },
+    wpn_spread: { name: 'Spread Array', qty: 0, basePrice: 200, idealStock: 8, size: 2 },
+    wpn_rad: { name: 'Rad Emitter', qty: 0, basePrice: 350, idealStock: 5, size: 3 },
+    wpn_laser: { name: 'Heavy Cannon', qty: 0, basePrice: 400, idealStock: 5, size: 3 },
+    wpn_home: { name: 'Homing Pod', qty: 0, basePrice: 450, idealStock: 5, size: 3 },
+    wpn_charm: { name: 'Charm Modulator', qty: 0, basePrice: 500, idealStock: 4, size: 3 },
+    wpn_grow: { name: 'Mass Projector', qty: 0, basePrice: 550, idealStock: 4, size: 3 },
+    scrap: { name: 'Alien Scrap', qty: 0, basePrice: 75, idealStock: 100, size: 1.5 },
+    shield: { name: 'Plasma Shield', qty: 1, basePrice: 250, idealStock: 15, size: 2 },
+    repair: { name: 'Repair Kit', qty: 1, basePrice: 300, idealStock: 20, size: 2 },
+    bomb: { name: 'Smart Bomb', qty: 1, basePrice: 600, idealStock: 10, size: 3 }
 };
 
 const factions = {
@@ -200,26 +273,22 @@ const factions = {
     iota: { name: "Iota Morphers", rep: 0, color: '#ffffff' }
 };
 
-const mapGrid = [
-    [{name: "Alpha Outpost", m:'alpha', mPwr: 80, r:'anarchy', rPwr: 20, s: ['scrap'], d: ['repair']}, {name: "Beta Forge", m:'beta', mPwr: 90, r:'gamma', rPwr: 40, s: ['ammo_rapid'], d: ['scrap']}, {name: "Gamma Labs", m:'gamma', mPwr: 70, r:'delta', rPwr: 30, s: ['ammo_laser', 'ammo_rad'], d: ['ammo_spread']}],
-    [{name: "Delta Prime", m:'delta', mPwr: 60, r:'epsilon', rPwr: 40, s: ['repair'], d: ['shield']}, {name: "Epsilon Hub", m:'epsilon', mPwr: 100, r:'zeta', rPwr: 10, s: [], d: []}, {name: "Zeta Station", m:'zeta', mPwr: 85, r:'eta', rPwr: 30, s: ['bomb'], d: []}],
-    [{name: "Eta Mines", m:'eta', mPwr: 75, r:'theta', rPwr: 25, s: ['ammo_spread'], d: ['ammo_laser']}, {name: "Theta-7", m:'theta', mPwr: 95, r:'iota', rPwr: 50, s: ['shield'], d: ['ammo_charm']}, {name: "Iota Terminus", m:'iota', mPwr: 80, r:'alpha', rPwr: 45, s: ['ammo_grow'], d: ['bomb', 'scrap']}]
-];
-let currX = 1, currY = 1; let targetX = 1, targetY = 1;
-
-const inventory = {
-    ammo_rapid: { name: 'Burst Ammo', qty: 0, basePrice: 5, idealStock: 300, size: 0.5 },
-    ammo_spread: { name: 'Spread Ammo', qty: 0, basePrice: 10, idealStock: 200, size: 0.5 },
-    ammo_rad: { name: 'Rad Ammo', qty: 0, basePrice: 25, idealStock: 150, size: 1 },
-    ammo_laser: { name: 'Heavy Laser', qty: 0, basePrice: 30, idealStock: 100, size: 1 },
-    ammo_home: { name: 'Homing Ammo', qty: 0, basePrice: 35, idealStock: 100, size: 1 },
-    ammo_charm: { name: 'Charm Darts', qty: 0, basePrice: 40, idealStock: 100, size: 1 },
-    ammo_grow: { name: 'Grow Ammo', qty: 0, basePrice: 45, idealStock: 100, size: 1 },
-    scrap: { name: 'Alien Scrap', qty: 0, basePrice: 75, idealStock: 100, size: 1.5 },
-    shield: { name: 'Plasma Shield', qty: 1, basePrice: 250, idealStock: 15, size: 2 },
-    repair: { name: 'Repair Kit', qty: 1, basePrice: 300, idealStock: 20, size: 2 },
-    bomb: { name: 'Smart Bomb', qty: 1, basePrice: 600, idealStock: 10, size: 3 }
+const mapNodes = {
+    'start': { name: "Alpha Outpost", tier: 0, m:'alpha', mPwr: 80, r:'anarchy', rPwr: 20, adj: ['p1_1', 'p1_2'] },
+    'p1_1': { name: "Beta Forge", tier: 1, m:'beta', mPwr: 90, r:'gamma', rPwr: 40, adj: ['start', 'p2_1', 'p2_2'] },
+    'p1_2': { name: "Gamma Labs", tier: 1, m:'gamma', mPwr: 70, r:'delta', rPwr: 30, adj: ['start', 'p2_2', 'p2_3'] },
+    'p2_1': { name: "Delta Prime", tier: 2, m:'delta', mPwr: 60, r:'epsilon', rPwr: 40, adj: ['p1_1', 'p3_1', 'p3_2'] },
+    'p2_2': { name: "Epsilon Hub", tier: 2, m:'epsilon', mPwr: 100, r:'zeta', rPwr: 10, adj: ['p1_1', 'p1_2', 'p3_2'] },
+    'p2_3': { name: "Zeta Station", tier: 2, m:'zeta', mPwr: 85, r:'eta', rPwr: 30, adj: ['p1_2', 'p3_2', 'p3_3'] },
+    'p3_1': { name: "Sigma Relay", tier: 3, m:'theta', mPwr: 70, r:'alpha', rPwr: 30, adj: ['p2_1', 'p4_1'] },
+    'p3_2': { name: "Omicron Point", tier: 3, m:'eta', mPwr: 80, r:'beta', rPwr: 20, adj: ['p2_1', 'p2_2', 'p2_3', 'p4_1', 'p4_2'] },
+    'p3_3': { name: "Rho Colony", tier: 3, m:'iota', mPwr: 60, r:'gamma', rPwr: 40, adj: ['p2_3', 'p4_2'] },
+    'p4_1': { name: "Eta Mines", tier: 4, m:'eta', mPwr: 75, r:'theta', rPwr: 25, adj: ['p3_1', 'p3_2', 'final'] },
+    'p4_2': { name: "Theta-7", tier: 4, m:'theta', mPwr: 95, r:'iota', rPwr: 50, adj: ['p3_2', 'p3_3', 'final'] },
+    'final': { name: "Iota Terminus", tier: 5, m:'iota', mPwr: 80, r:'alpha', rPwr: 45, adj: ['p4_1', 'p4_2'] }
 };
+
+let currentNode = 'start'; let targetNode = 'start'; let activeLoans = [];
 
 const upgrades = {
     hull: { name: 'Reinforced Hull (+HP)', level: 0, basePrice: 400 }, damage: { name: 'Blaster Array (+Dmg)', level: 0, basePrice: 600 },
@@ -254,6 +323,24 @@ const devMenuLayout = [
     { title: "Enemy: Orange (Gel)", items: [ { id: "enm_orange_hp", label: "Base Health", min: 1, max: 20, step: 1 }, { id: "enm_orange_dmg", label: "Damage Dealt", min: 1, max: 5, step: 1 }, { id: "enm_orange_spd", label: "Speed Mult", min: 0.1, max: 5, step: 0.1 }, { id: "enm_orange_fr", label: "Fire Rate (frames)", min: 10, max: 200, step: 5 } ]},
     { title: "Enemy: Faction Ships", items: [ { id: "enm_fac_hpMult", label: "Health Mult", min: 0.1, max: 5, step: 0.1 }, { id: "enm_fac_dmgMult", label: "Damage Mult", min: 0.1, max: 5, step: 0.1 }, { id: "enm_fac_spdMult", label: "Speed Mult", min: 0.1, max: 5, step: 0.1 }, { id: "enm_fac_frMult", label: "Fire Rate Mult", min: 0.1, max: 5, step: 0.1 } ]}
 ];
+
+// ==========================================
+// SECTION 2.5: PARTICLE EFFECTS
+// ==========================================
+function createExplosion(x, y, color, particleCount, speed) {
+    for (let i = 0; i < particleCount; i++) {
+        particles.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * speed * 2,
+            vy: (Math.random() - 0.5) * speed * 2,
+            life: Math.floor(Math.random() * 20) + 10,
+            color: color,
+            size: Math.random() * 4 + 1,
+            markedForDelete: false
+        });
+    }
+}
 
 // ==========================================
 // SECTION 3: INPUT & SPATIAL NAVIGATION     
@@ -308,8 +395,18 @@ window.addEventListener('keydown', e => {
         if (e.code === 'Digit2' && inventory.bomb.qty>0) { inventory.bomb.qty--; enemies=[]; enemyBullets=[]; createExplosion(canvas.width/2, canvas.height/2, '#f0f', 100, 20); screenShake=30; updateCombatHUD();}
         if (e.code === 'KeyH' && inventory.repair.qty>0 && player.hp<player.maxHp) { inventory.repair.qty--; player.hp++; createExplosion(player.x, player.y, '#0f0', 30, 5); updateCombatHUD();}
         
-        let wepMap = {'Digit3':'ammo_std', 'Digit4':'ammo_rapid', 'Digit5':'ammo_spread', 'Digit6':'ammo_laser', 'Digit7':'ammo_charm', 'Digit8':'ammo_rad', 'Digit9':'ammo_home', 'Digit0':'ammo_grow'};
-        if (wepMap[e.code]) { player.activeWeapon = wepMap[e.code]; updateCombatHUD(); }
+        let wepMap = {'Digit3':'wpn_std', 'Digit4':'wpn_rapid', 'Digit5':'wpn_spread', 'Digit6':'wpn_laser', 'Digit7':'wpn_charm', 'Digit8':'wpn_rad', 'Digit9':'wpn_home', 'Digit0':'wpn_grow'};
+        if (wepMap[e.code]) { 
+            let wep = wepMap[e.code];
+            if (wep === 'wpn_std') { 
+                player.activeWeapon = wep; updateCombatHUD(); 
+            } else if (inventory[wep] && inventory[wep].qty > 0 && player.activeWeapon !== wep) {
+                inventory[wep].qty--; // Consume the item to activate the power-up
+                player.activeWeapon = wep; 
+                createExplosion(player.x + player.width/2, player.y + player.height/2, '#fff', 20, 5); // Flash feedback
+                updateCombatHUD();
+            }
+        }
     } else {
         if (e.code === 'Escape' || e.code === 'KeyP') { if (gameState === 'PAUSED') togglePause(); return; }
         if (e.code.startsWith('Arrow')) { if (document.activeElement.tagName === 'INPUT' && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) return; e.preventDefault(); moveFocus(e.code); }
@@ -372,7 +469,8 @@ function showArrivalScreen() {
     document.getElementById('map-layer').classList.add('hidden');
     document.getElementById('arrival-layer').classList.remove('hidden');
 
-    let loc = mapGrid[currY][currX]; let mFac = factions[loc.m]; let rFac = factions[loc.r];
+    let loc = mapNodes[currentNode]; 
+    let mFac = factions[loc.m]; let rFac = factions[loc.r];
     let getQuote = (rep) => { if (rep < -20) return `"We have no love for you here. Tread lightly."`; if (rep > 20) return `"Welcome back to our sector, honored trader."`; return `"State your business and move along."`; };
     let mStyle = `color: ${mFac.color}; border-color: ${mFac.color}; box-shadow: 0 0 15px ${mFac.color}, inset 0 0 10px ${mFac.color}; text-shadow: 0 0 10px ${mFac.color};`;
     let rStyle = `color: ${rFac.color}; border-color: ${rFac.color}; box-shadow: 0 0 15px ${rFac.color}, inset 0 0 10px ${rFac.color}; text-shadow: 0 0 10px ${rFac.color};`;
@@ -409,10 +507,17 @@ function updateMarketUI() {
     let mCol = document.getElementById('market-items') ? document.getElementById('market-items').parentElement : null; let uCol = document.getElementById('upgrade-items') ? document.getElementById('upgrade-items').parentElement : null;
     let mScroll = mCol ? mCol.scrollTop : 0; let uScroll = uCol ? uCol.scrollTop : 0;
 
-    let loc = mapGrid[currY][currX]; let sd = getStagedData(); let projCash = playerCash + sd.cash; let projCargo = getUsedCargo() + sd.cargo; let isLocked = loc.traded; 
+    let loc = mapNodes[currentNode]; 
+    let sd = getStagedData(); 
+    let projCash = playerCash + sd.cash; 
+    let projCargo = getUsedCargo() + sd.cargo; 
+    let isLocked = loc.traded; 
 
-    document.getElementById('market-day').innerText = currentDay; document.getElementById('market-cash').innerText = Math.floor(projCash);
-    document.getElementById('market-cargo').innerText = Math.ceil(projCargo); document.getElementById('market-maxcargo').innerText = player.maxCargo;
+    document.getElementById('market-day').innerText = currentDay; 
+    document.getElementById('market-loc').innerText = loc.name;
+    document.getElementById('market-cash').innerText = Math.floor(projCash);
+    document.getElementById('market-cargo').innerText = Math.ceil(projCargo); 
+    document.getElementById('market-maxcargo').innerText = player.maxCargo;
     document.getElementById('market-cargo').style.color = projCargo >= player.maxCargo * 0.9 ? '#f00' : '#fff';
 
     let mFac = factions[loc.m]; let rFac = factions[loc.r];
@@ -422,28 +527,63 @@ function updateMarketUI() {
     `;
 
     let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let currentStockObj = getActiveStockObject(); const mContainer = document.getElementById('market-items'); 
+    
+    // --> FIXED: Properly define what is allowed in the current shop <--
+    let allowed = activeShop === 'RISING' ? getBackAlleyAllowed(loc) : Object.keys(inventory);
+
     let mHTML = '';
-    if (isLocked) mHTML = `<div style="text-align:center; padding: 40px; color: #f00; border: 1px solid #f00; box-shadow: inset 0 0 15px #f00, 0 0 15px #f00; text-shadow: 0 0 10px #f00;"><h3>MARKET CLOSED</h3><p>This sector's markets are closed until your next visit.</p></div>`;
-    else {
+    if (isLocked) {
+        mHTML = `<div style="text-align:center; padding: 40px; color: #f00; border: 1px solid #f00; box-shadow: inset 0 0 15px #f00, 0 0 15px #f00; text-shadow: 0 0 10px #f00;"><h3>MARKET CLOSED</h3><p>This sector's markets are closed until your next visit.</p></div>`;
+    } else {
         for (let key in inventory) {
             const item = inventory[key]; let c = stagedCart[key] || 0; let b = c > 0 ? c : 0; let s = c < 0 ? Math.abs(c) : 0; let availStock = Math.floor(currentStockObj[key]) - b;
+            
+            if (activeShop === 'RISING' && !allowed.includes(key)) { if (item.qty === 0 && c === 0) continue; }
+
             let stdDisp = player.hasAnalytics ? `$${item.basePrice}` : '???';
-            let priceDisplay = item.curBuy === item.curSell ? `Price: $<span style="color:#ff0">${item.curBuy}</span>` : `Buy: $<span style="color:#f00">${item.curBuy}</span> | Sell: $<span style="color:#0f0">${item.curSell}</span>`;
+            let priceDisplay = item.curBuy === item.curSell ? `Price: $<span style="color:#ff0">${item.curBuy}</span>` : `Buy: $<span style="color:#f00">${item.curBuy}</span><br>Sell: $<span style="color:#0f0">${item.curSell}</span>`;
             let stockDisplay = availStock > 0 ? `<span style="color:#0ff">${availStock}</span>` : `<span style="color:#f00">OUT OF STOCK</span>`;
-            if (currentStockObj[key] === 0 && activeShop === 'RISING') priceDisplay = `Buy: <span style="color:#555">N/A</span> | Sell: $<span style="color:#0f0">${item.curSell}</span>`;
+            if (currentStockObj[key] === 0 && activeShop === 'RISING') priceDisplay = `Buy: <span style="color:#555">N/A</span><br>Sell: $<span style="color:#0f0">${item.curSell}</span>`;
             let stagedHTML = ''; if (b > 0) stagedHTML = `<span style="color:#f00"> (+${b})</span>`; if (s > 0) stagedHTML = `<span style="color:#0f0"> (-${s})</span>`;
 
             mHTML += `<div class="terminal-table">
                 <div><strong style="color:${item.name.includes('Ammo') ? '#ff0' : (key==='repair'?'#0f0':'#fff')}">${item.name}</strong> <span style="color:#888; font-size:10px;">(Sz:${item.size})</span></div>
-                <div>${priceDisplay} <span style="color:#888; font-size:10px;">(Std:${stdDisp})</span></div>
+                <div>${priceDisplay} <br><span style="color:#888; font-size:10px;">(Std:${stdDisp})</span></div>
                 <div>Own: ${item.qty}${stagedHTML}<br>Stock: ${stockDisplay}</div>
-                <div style="text-align:right;">
-                    <button data-nav-id="buy1-${key}" onclick="adjustCart('${key}', 1)">+1</button> <button data-nav-id="buy10-${key}" onclick="adjustCart('${key}', 10)">+10</button><br>
-                    <button data-nav-id="sell1-${key}" class="sell" style="margin-top:2px" onclick="adjustCart('${key}', -1)">-1</button> <button data-nav-id="sell10-${key}" class="sell" style="margin-top:2px" onclick="adjustCart('${key}', -10)">-10</button>
+                <div class="action-btns">
+                    <button data-nav-id="buy1-${key}" onclick="adjustCart('${key}', 1)">+1</button> <button data-nav-id="buy10-${key}" onclick="adjustCart('${key}', 10)">+10</button>
+                    <button data-nav-id="sell1-${key}" class="sell" onclick="adjustCart('${key}', -1)">-1</button> <button data-nav-id="sell10-${key}" class="sell" onclick="adjustCart('${key}', -10)">-10</button>
                 </div></div>`;
         }
-    }
+    } // --> FIXED: Added the missing closing bracket for the else block <--
     mContainer.innerHTML = mHTML; 
+
+    const bContainer = document.getElementById('bank-panel');
+    let existingLoan = activeLoans.find(l => l.faction === activeFacKey);
+    let bHTML = '';
+    
+    if (isLocked) {
+        bHTML = `<div style="text-align:center; padding: 15px; color: #555; border: 1px solid #444;">Bank access denied.</div>`;
+    } else if (existingLoan) {
+        let canRepay = projCash >= existingLoan.owed;
+        bHTML = `<div class="upgrade-item" style="border-color:#ffaa00; background:rgba(40,20,0,0.4);">
+            <div><strong style="color:#ffaa00;">Outstanding Debt</strong><br><span style="color:#aaa;">Owed: $<span style="color:#f00">${existingLoan.owed}</span> | Time: ${existingLoan.hops} Hops</span></div>
+            <button class="${canRepay ? 'upg' : 'locked'}" style="color:${canRepay ? '#0f0' : '#555'}; border-color:${canRepay ? '#0f0' : '#444'};" ${canRepay ? `onclick="repayLoan('${activeFacKey}')"` : 'disabled'}>REPAY</button>
+        </div>`;
+    } else {
+        let loanAmt = 1500; let repayAmt = 2200; let hops = 6;
+        bHTML = `<div class="upgrade-item" style="border-color:#ffaa00; background:rgba(40,20,0,0.4);">
+            <div><strong style="color:#ffaa00;">Loan Offer</strong><br><span style="color:#aaa;">Get: $<span style="color:#0f0">${loanAmt}</span> | Repay: $<span style="color:#f00">${repayAmt}</span><br>Time: ${hops} Hops</span></div>
+            <button class="upg" style="color:#ffaa00; border-color:#ffaa00;" onclick="takeLoan('${activeFacKey}', ${loanAmt}, ${repayAmt}, ${hops})">TAKE</button>
+        </div>`;
+    }
+    
+    if (activeLoans.length > 0) {
+        bHTML += `<div style="margin-top: 10px; font-size: 11px; color: #888;"><strong>ACTIVE DEBTS:</strong><br>`;
+        activeLoans.forEach(l => { bHTML += `- ${factions[l.faction].name}: $${l.owed} (<span style="color:${l.hops < 2 ? '#f00' : '#fff'}">${l.hops} hops</span> left)<br>`; });
+        bHTML += `</div>`;
+    }
+    bContainer.innerHTML = bHTML;
 
     const uContainer = document.getElementById('upgrade-items'); let uHTML = '';
     if (isLocked) uHTML = `<div style="text-align:center; padding: 20px; color: #555; text-shadow: 0 0 5px #555; border: 1px solid #444;">Shipyard access denied.</div>`;
@@ -467,17 +607,56 @@ function updateMarketUI() {
 
 function openMap() {
     lastFocusedId = null; gameState = 'MAP'; document.getElementById('ui-layer').classList.add('hidden'); document.getElementById('map-layer').classList.remove('hidden');
-    const wrapper = document.getElementById('map-wrapper'); wrapper.innerHTML = '';
-    for(let y = 0; y < 3; y++) {
-        for(let x = 0; x < 3; x++) {
-            let loc = mapGrid[y][x]; let isCurrent = (x === currX && y === currY); let isAdj = (Math.abs(x - currX) + Math.abs(y - currY) === 1); 
-            let btn = document.createElement('button'); btn.className = 'map-node'; btn.setAttribute('data-nav-id', `map-node-${x}-${y}`); 
-            if (isCurrent) btn.classList.add('current'); if (isAdj) btn.classList.add('adjacent'); else if (!isCurrent) btn.disabled = true;
-            let status = isCurrent ? 'CURRENT LOCATION' : (isAdj ? 'INITIATE JUMP' : 'OUT OF RANGE');
-            btn.innerHTML = `<strong style="font-size:16px;">${loc.name}</strong><br><small style="margin-top:5px; color:#aaa; text-shadow:none;">${status}</small>`;
-            if (isAdj) btn.onclick = () => { targetX = x; targetY = y; startCombat(); }; wrapper.appendChild(btn);
-        }
+    const wrapper = document.getElementById('map-wrapper'); 
+    wrapper.innerHTML = '';
+    
+    wrapper.style.display = 'flex'; 
+    wrapper.style.justifyContent = 'space-around';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.gridTemplateColumns = 'none'; 
+    
+    // Dynamically sort nodes into columns based on their Tier
+    let tiers = [];
+    for (let key in mapNodes) {
+        let t = mapNodes[key].tier;
+        if (!tiers[t]) tiers[t] = [];
+        tiers[t].push({id: key, ...mapNodes[key]});
     }
+    
+    tiers.forEach(tierNodes => {
+        let col = document.createElement('div');
+        col.style.display = 'flex'; col.style.flexDirection = 'column'; col.style.justifyContent = 'center'; col.style.gap = '15px';
+        
+        tierNodes.forEach(loc => {
+            let isCurrent = (loc.id === currentNode);
+            let isAdj = mapNodes[currentNode].adj.includes(loc.id); 
+            
+            let btn = document.createElement('button'); btn.className = 'map-node'; btn.setAttribute('data-nav-id', `map-node-${loc.id}`); 
+            if (isCurrent) btn.classList.add('current'); if (isAdj) btn.classList.add('adjacent'); else if (!isCurrent) btn.disabled = true;
+            
+            // Scaled down text slightly to fit 6 columns gracefully
+            btn.style.padding = '8px 5px';
+            btn.style.fontSize = '12px';
+            
+            let status = isCurrent ? 'CURRENT' : (isAdj ? 'JUMP' : 'O.O.R.');
+            
+            // Get the faction data for the current node
+            let mFac = factions[loc.m];
+            let rFac = factions[loc.r];
+
+            // Inject the faction names and their respective colors into the button
+            btn.innerHTML = `
+                <strong style="font-size:14px;">${loc.name}</strong><br>
+                <span style="color:${mFac.color}; font-size:10px; text-shadow: 0 0 5px ${mFac.color};">Hub: ${mFac.name}</span><br>
+                <span style="color:${rFac.color}; font-size:10px; text-shadow: 0 0 5px ${rFac.color};">Alley: ${rFac.name}</span><br>
+                <small style="margin-top:3px; color:#aaa; text-shadow:none;">[${status}]</small>
+            `;
+            
+            if (isAdj) btn.onclick = () => { targetNode = loc.id; startCombat(); }; 
+            col.appendChild(btn);
+        });
+        wrapper.appendChild(col);
+    });
     focusFirst();
 }
 
@@ -491,10 +670,12 @@ function togglePause() {
 function renderPauseMenu() {
     saveFocus();
     const pContainer = document.getElementById('pause-items'); pContainer.innerHTML = '';
-    ['ammo_std', 'ammo_rapid', 'ammo_spread', 'ammo_laser', 'ammo_charm'].forEach(key => {
-        const qty = key === 'ammo_std' ? '∞' : inventory[key].qty; const name = key === 'ammo_std' ? 'Std Ammo' : (inventory[key] ? inventory[key].name : ''); const isActive = player.activeWeapon === key;
+    ['wpn_std', 'wpn_rapid', 'wpn_spread', 'wpn_laser', 'wpn_charm'].forEach(key => {
+        const qty = key === 'wpn_std' ? '∞' : (inventory[key] ? inventory[key].qty : 0); 
+        const name = key === 'wpn_std' ? 'Std Blaster' : (inventory[key] ? inventory[key].name : ''); 
+        const isActive = player.activeWeapon === key;
         let activeStyle = isActive ? 'background: rgba(0, 255, 0, 0.3); color: #0f0; border-color: #0f0; box-shadow: 0 0 10px #0f0 inset, 0 0 10px #0f0; text-shadow: 0 0 5px #0f0;' : '';
-        pContainer.innerHTML += `<div class="pause-item"><div><strong style="color:#ff0">${name}</strong> (${qty})</div><button data-nav-id="pause-eqp-${key}" class="eqp" style="${activeStyle}" onclick="equipWeapon('${key}')">${isActive ? 'EQUIPPED' : 'EQUIP'}</button></div>`;
+        pContainer.innerHTML += `<div class="pause-item"><div><strong style="color:#ff0">${name}</strong> (${qty} in hold)</div><button data-nav-id="pause-eqp-${key}" class="eqp" style="${activeStyle}" onclick="equipWeapon('${key}')">${isActive ? 'ACTIVE' : 'ACTIVATE'}</button></div>`;
     });
     ['shield', 'bomb', 'repair'].forEach(key => {
         const item = inventory[key]; let color = key==='shield'?'#0ff':(key==='bomb'?'#f0f':'#0f0');
@@ -508,13 +689,20 @@ function updateCombatHUD() {
     let usedCargo = getUsedCargo(); document.getElementById('hud-cargo').innerText = `${Math.ceil(usedCargo)}/${player.maxCargo}`; document.getElementById('hud-cargo').style.color = usedCargo >= player.maxCargo * 0.9 ? '#f00' : '#fff';
     document.getElementById('hud-time').innerText = Math.ceil(combatTimer / 60); document.getElementById('hud-cash').innerText = playerCash;
     document.getElementById('hud-shield').innerText = inventory.shield.qty; document.getElementById('hud-bomb').innerText = inventory.bomb.qty; document.getElementById('hud-repair').innerText = inventory.repair.qty;
-    document.getElementById('hud-weapon').innerText = player.activeWeapon.replace('ammo_', '').toUpperCase(); document.getElementById('hud-ammo').innerText = player.activeWeapon === 'ammo_std' ? '∞' : inventory[player.activeWeapon].qty;
+    // Power-ups have infinite ammo while active, so hide the ammo counter
+    document.getElementById('hud-weapon').innerText = player.activeWeapon === 'wpn_std' ? 'STANDARD' : inventory[player.activeWeapon].name.toUpperCase(); 
+    document.getElementById('hud-ammo').innerText = '∞';
 }
-
 // ==========================================
 // SECTION 5: CORE ECONOMY & MARKET LOGIC    
 // ==========================================
 function getUsedCargo() { let total = 0; for (let key in inventory) total += inventory[key].qty * inventory[key].size; return total; }
+
+function getBackAlleyAllowed(loc) {
+    let allowed = ['scrap', 'repair'];
+    if (factionWeapons[loc.r]) allowed.push(factionWeapons[loc.r]);
+    return allowed;
+}
 
 function getStagedData(excludeKey = null) {
     let stagedCash = 0; let stagedCargo = 0;
@@ -523,7 +711,7 @@ function getStagedData(excludeKey = null) {
         let c = stagedCart[key] || 0;
         if (c > 0) { stagedCash -= c * inventory[key].curBuy; stagedCargo += c * inventory[key].size; } else if (c < 0) { stagedCash += Math.abs(c) * inventory[key].curSell; stagedCargo -= Math.abs(c) * inventory[key].size; }
     }
-    let loc = mapGrid[currY][currX]; let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let repMod = factions[activeFacKey].rep * 0.002;
+    let loc = mapNodes[currentNode]; let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let repMod = factions[activeFacKey].rep * 0.002;
     stagedUpgrades.forEach(key => { let upg = upgrades[key]; let baseCost = upg.basePrice * (upg.level + 1); let cost = Math.max(1, Math.floor(baseCost * (1 - repMod))); stagedCash -= cost; });
     return { cash: stagedCash, cargo: stagedCargo };
 }
@@ -531,22 +719,39 @@ function getStagedData(excludeKey = null) {
 function clearCart() { stagedCart = {}; stagedUpgrades = []; updateMarketUI(); }
 function setShop(shopType) { stagedCart = {}; stagedUpgrades = []; activeShop = shopType; calculateCurrentPrices(); updateMarketUI(); }
 function getRepClass(rep) { if (rep > 10) return 'rep-good'; if (rep < -10) return 'rep-bad'; return 'rep-neu'; }
-function getActiveStockObject() { return activeShop === 'MAIN' ? mapGrid[currY][currX].mStock : mapGrid[currY][currX].rStock; }
+function getActiveStockObject() { return activeShop === 'MAIN' ? mapNodes[currentNode].mStock : mapNodes[currentNode].rStock; }
 
 function calculateCurrentPrices() {
-    let loc = mapGrid[currY][currX]; let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let repMod = factions[activeFacKey].rep * 0.002; let currentStockObj = getActiveStockObject();
+    let loc = mapNodes[currentNode]; let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let repMod = factions[activeFacKey].rep * 0.002; let currentStockObj = getActiveStockObject();
+    let allowed = activeShop === 'RISING' ? getBackAlleyAllowed(loc) : Object.keys(inventory);
+
     for (let key in inventory) {
         let base = inventory[key].basePrice; let ideal = inventory[key].idealStock; let current = currentStockObj[key];
-        if (current === 0 && activeShop === 'RISING') { inventory[key].curBuy = 9999; inventory[key].curSell = Math.max(1, Math.floor((base * 0.5) * (1 + repMod))); } 
-        else { let ratio = ideal / (current + ideal * 0.1); let supplyPrice = Math.max(1, base * Math.pow(ratio, 1.3)); inventory[key].curBuy = Math.max(1, Math.floor(supplyPrice * (1 - repMod))); inventory[key].curSell = Math.max(1, Math.floor(supplyPrice * (1 + repMod))); }
+        
+        if (!allowed.includes(key) || (current === 0 && activeShop === 'RISING')) { 
+            inventory[key].curBuy = 9999; 
+            inventory[key].curSell = Math.max(1, Math.floor((base * 0.5) * (1 + repMod))); 
+        } else { 
+            let ratio = ideal / (current + ideal * 0.1); 
+            let supplyPrice = Math.max(1, base * Math.pow(ratio, 1.3)); 
+            inventory[key].curBuy = Math.max(1, Math.floor(supplyPrice * (1 - repMod))); 
+            inventory[key].curSell = Math.max(1, Math.floor(supplyPrice * (1 + repMod))); 
+        }
     }
 }
 
 function adjustCart(key, delta) {
-    let loc = mapGrid[currY][currX]; if (loc.traded) return;
+    let loc = mapNodes[currentNode]; if (loc.traded) return;
     let oldTarget = stagedCart[key] || 0; let newTarget = oldTarget + delta;
     if (newTarget < -inventory[key].qty) newTarget = -inventory[key].qty;
-    if (newTarget > 0) { let stock = getActiveStockObject(); if (stock[key] === 0 && activeShop === 'RISING') newTarget = Math.min(newTarget, 0); else newTarget = Math.min(newTarget, Math.floor(stock[key])); }
+    
+    let allowed = activeShop === 'RISING' ? getBackAlleyAllowed(loc) : Object.keys(inventory);
+    if (newTarget > 0) { 
+        let stock = getActiveStockObject(); 
+        if (!allowed.includes(key) || (stock[key] === 0 && activeShop === 'RISING')) newTarget = Math.min(newTarget, 0); 
+        else newTarget = Math.min(newTarget, Math.floor(stock[key])); 
+    }
+    
     let step = delta > 0 ? -1 : 1;
     while (newTarget !== oldTarget) {
         if (newTarget === 0) delete stagedCart[key]; else stagedCart[key] = newTarget;
@@ -559,21 +764,22 @@ function adjustCart(key, delta) {
 
 function stageUpgrade(key) {
     let index = stagedUpgrades.indexOf(key); if (index > -1) stagedUpgrades.splice(index, 1);
-    else { let sd = getStagedData(); let loc = mapGrid[currY][currX]; let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let cost = Math.max(1, Math.floor((upgrades[key].basePrice * (upgrades[key].level + 1)) * (1 - (factions[activeFacKey].rep * 0.002)))); if (playerCash + sd.cash >= cost) stagedUpgrades.push(key); }
+    else { let sd = getStagedData(); let loc = mapNodes[currentNode]; let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let cost = Math.max(1, Math.floor((upgrades[key].basePrice * (upgrades[key].level + 1)) * (1 - (factions[activeFacKey].rep * 0.002)))); if (playerCash + sd.cash >= cost) stagedUpgrades.push(key); }
     updateMarketUI();
 }
 
 function processTradeImpact(factionKey, tradeValue) {
     let fac = factions[factionKey]; let repGain = tradeValue / 100; 
     fac.rep = Math.min(100, Math.max(-100, fac.rep + repGain));
-    let loc = mapGrid[currY][currX];
+    let loc = mapNodes[currentNode];
     if (activeShop === 'MAIN') loc.mPwr += repGain * 2; else loc.rPwr += repGain * 2;
+    
     if (loc.rPwr > loc.mPwr) { let tempF = loc.m; let tempP = loc.mPwr; loc.m = loc.r; loc.mPwr = loc.rPwr; loc.r = tempF; loc.rPwr = tempP; let tempStock = loc.mStock; loc.mStock = loc.rStock; loc.rStock = tempStock; activeShop = 'MAIN'; }
     if (loc.mPwr - loc.rPwr > 50) { let available = Object.keys(factions).filter(k => k !== loc.m && k !== loc.r && k !== 'anarchy'); loc.r = available[Math.floor(Math.random() * available.length)]; loc.rPwr = Math.max(10, loc.mPwr - 45); for(let key in inventory) loc.rStock[key] = Math.floor(loc.mStock[key] * 0.3); if (activeShop === 'RISING') activeShop = 'MAIN'; }
 }
 
 function submitCart() {
-    let loc = mapGrid[currY][currX]; let totalTradeVal = 0; let didTrade = false; let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let currentStockObj = getActiveStockObject();
+    let loc = mapNodes[currentNode]; let totalTradeVal = 0; let didTrade = false; let activeFacKey = activeShop === 'MAIN' ? loc.m : loc.r; let currentStockObj = getActiveStockObject();
     for (let key in stagedCart) {
         let c = stagedCart[key];
         if (c > 0) { playerCash -= c * inventory[key].curBuy; inventory[key].qty += c; currentStockObj[key] -= c; totalTradeVal += c * inventory[key].curBuy; didTrade = true; }
@@ -588,37 +794,53 @@ function submitCart() {
 }
 
 function initializeEconomy() {
-    for(let y=0; y<3; y++) {
-        for(let x=0; x<3; x++) {
-            let loc = mapGrid[y][x]; loc.mStock = {}; loc.rStock = {}; loc.traded = false; 
-            let keys = Object.keys(inventory); let m1 = keys[Math.floor(Math.random() * keys.length)]; let m2 = keys[Math.floor(Math.random() * keys.length)];
-            for(let key in inventory) {
-                let ideal = inventory[key].idealStock; let startStock = ideal;
-                if(loc.s.includes(key)) startStock = ideal * 2.5; if(loc.d.includes(key)) startStock = ideal * 0.2; 
-                loc.mStock[key] = Math.floor(startStock * (0.4 + Math.random() * 1.2));
-                if (key === m1 || key === m2) loc.rStock[key] = 0; else loc.rStock[key] = Math.floor(loc.mStock[key] * 0.3); 
-            }
-            loc.mUpgrades = Object.keys(upgrades).sort(() => 0.5 - Math.random()).slice(0, 3);
-            loc.rUpgrades = Object.keys(upgrades).sort(() => 0.5 - Math.random()).slice(0, 3);
+    for(let key in mapNodes) {
+        let loc = mapNodes[key]; loc.mStock = {}; loc.rStock = {}; loc.traded = false; 
+        
+        for(let itemKey in inventory) {
+            let ideal = inventory[itemKey].idealStock; 
+            loc.mStock[itemKey] = Math.floor(ideal * (0.4 + Math.random() * 1.2));
         }
+        
+        let allowedBackAlley = getBackAlleyAllowed(loc);
+        for(let itemKey in inventory) {
+            if (allowedBackAlley.includes(itemKey)) {
+                loc.rStock[itemKey] = Math.floor(inventory[itemKey].idealStock * (0.4 + Math.random() * 1.2));
+            } else {
+                loc.rStock[itemKey] = 0;
+            }
+        }
+        
+        loc.mUpgrades = []; // Main market NO LONGER gets upgrades
+        let pool = Object.keys(upgrades).filter(k => !upgrades[k].maxLevel || upgrades[k].level < upgrades[k].maxLevel);
+        loc.rUpgrades = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
     }
 }
 
 function rollAllUpgrades() {
-    for(let y=0; y<3; y++) {
-        for(let x=0; x<3; x++) {
-            let pool = Object.keys(upgrades).filter(key => !upgrades[key].maxLevel || upgrades[key].level < upgrades[key].maxLevel);
-            mapGrid[y][x].mUpgrades = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
-            mapGrid[y][x].rUpgrades = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
-        }
+    for(let key in mapNodes) {
+        let pool = Object.keys(upgrades).filter(k => !upgrades[k].maxLevel || upgrades[k].level < upgrades[k].maxLevel);
+        mapNodes[key].mUpgrades = [];
+        mapNodes[key].rUpgrades = pool.sort(() => 0.5 - Math.random()).slice(0, 3);
     }
 }
 
-function startGame(startRep) {
-    for (let key in factions) if (key!=='anarchy') factions[key].rep = startRep;
+function startWithLoan(fac, amount, repay, hops) {
+    playerCash = amount;
+    activeLoans.push({ faction: fac, owed: repay, hops: hops });
+    for (let key in factions) if (key!=='anarchy') factions[key].rep = 0; 
     initializeEconomy();
     document.getElementById('difficulty-layer').classList.add('hidden');
     showArrivalScreen();
+}
+
+function takeLoan(fac, amt, repay, hops) { playerCash += amt; activeLoans.push({ faction: fac, owed: repay, hops: hops }); updateMarketUI(); }
+
+function repayLoan(fac) {
+    let idx = activeLoans.findIndex(l => l.faction === fac);
+    if (idx > -1 && playerCash >= activeLoans[idx].owed) {
+        playerCash -= activeLoans[idx].owed; activeLoans.splice(idx, 1); updateMarketUI();
+    }
 }
 
 // ==========================================
@@ -637,10 +859,10 @@ function useItemFromMenu(key) {
 
 function spawnLoot(x, y) {
     let r = Math.random(); let drop = null;
-    if (r < 0.3) drop = { id: 'cash', val: Math.floor(Math.random()*50)+20, color: '#0f0', label: '$' };
-    else if (r < 0.45) drop = { id: 'ammo_rapid', val: 10, color: '#f00', label: 'R' };
-    else if (r < 0.60) drop = { id: 'ammo_spread', val: 5, color: '#f0f', label: 'S' };
-    else if (r < 0.70) drop = { id: 'ammo_laser', val: 2, color: '#0ff', label: 'L' };
+if (r < 0.3) drop = { id: 'cash', val: Math.floor(Math.random()*50)+20, color: '#0f0', label: '$' };
+    else if (r < 0.45) drop = { id: 'wpn_rapid', val: 1, color: '#f00', label: 'R' };
+    else if (r < 0.60) drop = { id: 'wpn_spread', val: 1, color: '#f0f', label: 'S' };
+    else if (r < 0.70) drop = { id: 'wpn_laser', val: 1, color: '#0ff', label: 'L' };
     else if (r < 0.80) drop = { id: 'scrap', val: 1, color: '#fff', label: 'X' };
     else if (r < 0.90) drop = { id: 'repair', val: 1, color: '#0f0', label: '+' };
     else if (r < 0.96) drop = { id: 'shield', val: 1, color: '#0ff', label: 'P' };
@@ -649,33 +871,229 @@ function spawnLoot(x, y) {
 }
 
 function startCombat() {
-    lastFocusedId = null; gameState = 'COMBAT'; document.getElementById('map-layer').classList.add('hidden'); document.getElementById('hud').classList.remove('hidden');
-    keys = {}; player.x = 50; player.y = 300; player.shieldTime = 0; player.shootCooldown = 0; player.isChargingLaser = false; player.burstsRemaining = 0; player.burstDelay = 0; player.heat = 0; player.overheated = false; player.slowTimer = 0; player.growTimer = 0;
-    bullets = []; enemies = []; enemyBullets = []; allyBullets = []; drops = []; particles = []; portal = null; screenShake = 0; combatTimer = maxCombatTimer; 
+    lastFocusedId = null; 
+    gameState = 'COMBAT'; 
+    document.getElementById('map-layer').classList.add('hidden'); 
+    document.getElementById('hud').classList.remove('hidden');
+    keys = {}; player.x = 50; 
+    player.y = 300; 
+    player.activeWeapon = 'wpn_std';
+    player.shieldTime = 0; 
+    player.shootCooldown = 0; 
+    player.isChargingLaser = false; 
+    player.burstsRemaining = 0; 
+    player.burstDelay = 0; 
+    player.heat = 0; 
+    player.overheated = false; 
+    player.slowTimer = 0; 
+    player.growTimer = 0;
+    bullets = []; 
+    enemies = []; 
+    enemyBullets = []; 
+    allyBullets = []; 
+    drops = []; 
+    particles = []; 
+    portal = null; 
+    screenShake = 0; 
+    combatTimer = maxCombatTimer; 
     updateCombatHUD(); requestAnimationFrame(gameLoop); 
 }
 
 function endCombat(won) {
-    lastFocusedId = null; document.getElementById('hud').classList.add('hidden'); currX = targetX; currY = targetY;
-    for(let y=0; y<3; y++) { for(let x=0; x<3; x++) { mapGrid[y][x].traded = false; for(let key in mapGrid[y][x].mStock) { let ideal = inventory[key] ? inventory[key].idealStock : 500; if (mapGrid[y][x].s.includes(key)) ideal *= 2.5; if (mapGrid[y][x].d.includes(key)) ideal *= 0.2; mapGrid[y][x].mStock[key] += (ideal - mapGrid[y][x].mStock[key]) * 0.1; if (mapGrid[y][x].rStock[key] !== 0) mapGrid[y][x].rStock[key] = Math.floor(mapGrid[y][x].mStock[key] * 0.3); } } }
+    // 1. Safety Lock
+    if (gameState !== 'COMBAT') return;
+    
+    // 2. Instantly halt the game loop engine
+    gameState = 'ARRIVAL';
+    lastFocusedId = null; 
+    document.getElementById('hud').classList.add('hidden'); 
+    currentNode = targetNode;
+
+    // 3. Process background economy updates
+    for(let key in mapNodes) { 
+        let loc = mapNodes[key]; loc.traded = false; 
+        for(let itemKey in loc.mStock) { let ideal = inventory[itemKey] ? inventory[itemKey].idealStock : 500; loc.mStock[itemKey] += (ideal - loc.mStock[itemKey]) * 0.1; } 
+        let allowed = getBackAlleyAllowed(loc);
+        for(let itemKey in loc.rStock) { if (allowed.includes(itemKey)) { let ideal = inventory[itemKey] ? inventory[itemKey].idealStock : 500; loc.rStock[itemKey] += (ideal - loc.rStock[itemKey]) * 0.1; } else loc.rStock[itemKey] = 0; }
+    }
     rollAllUpgrades();
-    if (won) { 
-        currentDay++; if (player.interestRate > 0) playerCash += Math.floor(playerCash * player.interestRate); 
-        let nFac = factions[mapGrid[currY][currX].m]; if (nFac.rep < 0 && playerCash > 0) { let fee = Math.max(1, Math.floor(playerCash * ((Math.floor(Math.random() * 5) + 1) / 100))); playerCash -= fee; alert(`Hostile Port! ${nFac.name} customs seized $${fee}.`); }
-    } else { alert("Ship heavily damaged! Lost credits and cargo."); playerCash = Math.floor(playerCash * 0.5); player.hp = player.maxHp; for(let key in inventory) inventory[key].qty = Math.floor(inventory[key].qty * 0.5); }
-    activeShop = 'MAIN'; clearCart(); calculateCurrentPrices(); showArrivalScreen();
+
+    // 4. Use a tiny buffer to allow the final explosion to render
+    setTimeout(() => {
+        currentDay++; 
+        activeLoans.forEach(l => l.hops--);
+        
+        if (won) { 
+            let justExpired = activeLoans.filter(l => l.hops === -1);
+            justExpired.forEach(l => { alert(`DEBT DEFAULTED! The ${factions[l.faction].name} have placed a bounty on your head!`); });
+            
+            if (player.interestRate > 0) playerCash += Math.floor(playerCash * player.interestRate); 
+            let nFac = factions[mapNodes[currentNode].m];
+            if (nFac.rep < 0 && playerCash > 0) { 
+                let fee = Math.max(1, Math.floor(playerCash * ((Math.floor(Math.random() * 5) + 1) / 100))); 
+                playerCash -= fee; 
+                alert(`Hostile Port! ${nFac.name} customs seized $${fee}.`); 
+            }
+        } else { 
+            // ==========================================
+            // DEATH PENALTY & REPO LOGIC
+            // ==========================================
+            let defaultedLoans = activeLoans.filter(l => l.hops < 0);
+            
+            if (defaultedLoans.length > 0) {
+                // --- REPO DEATH (Bounty Hunters) ---
+                let seizedCargoValue = 0;
+                let loc = mapNodes[currentNode];
+                
+                for (let key in inventory) {
+                    if (inventory[key].qty > 0) {
+                        let ideal = inventory[key].idealStock; 
+                        let current = loc.mStock[key];
+                        let ratio = ideal / (current + ideal * 0.1); 
+                        let sellPrice = Math.max(1, Math.floor(inventory[key].basePrice * Math.pow(ratio, 1.3)));
+                        seizedCargoValue += inventory[key].qty * sellPrice;
+                        inventory[key].qty = 0; // Strip the ship clean
+                    }
+                }
+                
+                let originalCash = playerCash;
+                let totalSeized = playerCash + seizedCargoValue;
+                playerCash = 0;
+                let paidOffText = "";
+                
+                // Sort defaulted loans by oldest so we pay those first
+                defaultedLoans.sort((a, b) => a.hops - b.hops); 
+                
+                for (let i = 0; i < defaultedLoans.length; i++) {
+                    let l = defaultedLoans[i];
+                    let realIdx = activeLoans.indexOf(l);
+                    if (realIdx === -1) continue;
+                    
+                    if (totalSeized >= l.owed) {
+                        totalSeized -= l.owed;
+                        paidOffText += `\n- Cleared $${l.owed} debt to ${factions[l.faction].name}!`;
+                        activeLoans.splice(realIdx, 1);
+                    } else if (totalSeized > 0) {
+                        l.owed -= Math.floor(totalSeized);
+                        paidOffText += `\n- Paid $${Math.floor(totalSeized)} towards ${factions[l.faction].name} debt.`;
+                        totalSeized = 0;
+                    }
+                }
+                
+                // Return any leftover cash, reset HP
+                playerCash = Math.floor(totalSeized);
+                player.hp = player.maxHp; 
+                
+                let stillActive = activeLoans.filter(l => l.hops < 0);
+                if (stillActive.length > 0) {
+                    paidOffText += `\n\nWARNING: Outstanding bounties remain active!`;
+                }
+                
+                alert(`BOUNTY CLAIMED!\nHunters liquidated your cargo and cash (Total Value: $${Math.floor(originalCash + seizedCargoValue)}).${paidOffText}`);
+            } else {
+                // --- NORMAL DEATH ---
+                alert("Ship heavily damaged! Lost 50% credits and cargo."); 
+                playerCash = Math.floor(playerCash * 0.5); 
+                player.hp = player.maxHp; 
+                for(let key in inventory) inventory[key].qty = Math.floor(inventory[key].qty * 0.5); 
+            }
+        }
+        
+        // 5. Build and reveal the Arrival UI safely
+        activeShop = 'MAIN'; 
+        clearCart(); 
+        calculateCurrentPrices(); 
+        showArrivalScreen();
+    }, 10);
 }
 
 function updateCombatHUD() {
-    document.getElementById('hud-hp').innerText = player.hp; document.getElementById('hud-maxhp').innerText = player.maxHp;
-    let usedCargo = getUsedCargo(); document.getElementById('hud-cargo').innerText = `${Math.ceil(usedCargo)}/${player.maxCargo}`; document.getElementById('hud-cargo').style.color = usedCargo >= player.maxCargo * 0.9 ? '#f00' : '#fff';
-    document.getElementById('hud-time').innerText = Math.ceil(combatTimer / 60); document.getElementById('hud-cash').innerText = playerCash;
-    document.getElementById('hud-shield').innerText = inventory.shield.qty; document.getElementById('hud-bomb').innerText = inventory.bomb.qty; document.getElementById('hud-repair').innerText = inventory.repair.qty;
-    document.getElementById('hud-weapon').innerText = player.activeWeapon.replace('ammo_', '').toUpperCase(); document.getElementById('hud-ammo').innerText = player.activeWeapon === 'ammo_std' ? '∞' : inventory[player.activeWeapon].qty;
+    // 1. Update basic status bars
+    document.getElementById('hud-hp').innerText = player.hp; 
+    document.getElementById('hud-maxhp').innerText = player.maxHp;
+    
+    let usedCargo = getUsedCargo(); 
+    document.getElementById('hud-cargo').innerText = `${Math.ceil(usedCargo)}/${player.maxCargo}`; 
+    document.getElementById('hud-cargo').style.color = usedCargo >= player.maxCargo * 0.9 ? '#f00' : '#fff';
+    
+    document.getElementById('hud-time').innerText = Math.ceil(combatTimer / 60); 
+    document.getElementById('hud-cash').innerText = playerCash;
+    
+    // 2. Update consumable counts
+    document.getElementById('hud-shield').innerText = inventory.shield.qty; 
+    document.getElementById('hud-bomb').innerText = inventory.bomb.qty; 
+    document.getElementById('hud-repair').innerText = inventory.repair.qty;
+    
+    // 3. Update Power-up Display (Safe lookup)
+    if (player.activeWeapon === 'wpn_std') {
+        document.getElementById('hud-weapon').innerText = "STANDARD";
+    } else {
+        // Look up the name from our new inventory keys
+        let wepName = inventory[player.activeWeapon] ? inventory[player.activeWeapon].name : "UNKNOWN";
+        document.getElementById('hud-weapon').innerText = wepName.toUpperCase();
+    }
+    
+    // Power-ups now have infinite ammo until hit
+    document.getElementById('hud-ammo').innerText = '∞';
+}
+
+function updateGamepadInput() {
+    if (gamepadIndex === null) return;
+    const gp = navigator.getGamepads()[gamepadIndex];
+    if (!gp) return;
+
+    // --- 1. AXIS MOVEMENT (Left Stick) ---
+    const threshold = 0.3; // Deadzone to prevent "drift"
+    keys['ArrowLeft'] = gp.axes[0] < -threshold || gp.buttons[14].pressed;
+    keys['ArrowRight'] = gp.axes[0] > threshold || gp.buttons[15].pressed;
+    keys['ArrowUp'] = gp.axes[1] < -threshold || gp.buttons[12].pressed;
+    keys['ArrowDown'] = gp.axes[1] > threshold || gp.buttons[13].pressed;
+
+    // --- 2. COMBAT ACTIONS ---
+    if (gameState === 'COMBAT') {
+        keys['Space'] = gp.buttons[0].pressed; // (A) or Cross to Shoot
+
+        // Handle Item Taps (Debounced so it only triggers once per press)
+        const checkBtn = (btnIdx, keyCode) => {
+            if (gp.buttons[btnIdx].pressed && !lastGpBtnState[btnIdx]) {
+                // Manually trigger your existing keydown logic
+                window.dispatchEvent(new KeyboardEvent('keydown', { 'code': keyCode }));
+            }
+            lastGpBtnState[btnIdx] = gp.buttons[btnIdx].pressed;
+        };
+
+        checkBtn(1, 'Digit1'); // (B) -> Shield
+        checkBtn(2, 'Digit2'); // (X) -> Bomb
+        checkBtn(3, 'KeyH');   // (Y) -> Heal
+        checkBtn(9, 'KeyP');   // Start/Options -> Pause
+    } 
+    
+    // --- 3. MENU NAVIGATION ---
+    else {
+        const checkMenuBtn = (btnIdx, dir) => {
+            if (gp.buttons[btnIdx].pressed && !lastGpBtnState[btnIdx]) {
+                moveFocus(dir);
+            }
+            lastGpBtnState[btnIdx] = gp.buttons[btnIdx].pressed;
+        };
+
+        checkMenuBtn(12, 'ArrowUp');
+        checkMenuBtn(13, 'ArrowDown');
+        checkMenuBtn(14, 'ArrowLeft');
+        checkMenuBtn(15, 'ArrowRight');
+
+        // (A) to Click
+        if (gp.buttons[0].pressed && !lastGpBtnState[0]) {
+            if (document.activeElement) document.activeElement.click();
+        }
+        lastGpBtnState[0] = gp.buttons[0].pressed;
+    }
 }
 
 function gameLoop() {
     if (gameState !== 'COMBAT') return; 
+
+    updateGamepadInput();
     
     let activeWidth = player.width;
     let activeHeight = player.height;
@@ -709,31 +1127,30 @@ function gameLoop() {
             }
         }
 
+        // Phase 1 - Firing (Infinite Ammo)
         if (keys['Space'] && player.shootCooldown <= 0 && !player.overheated) {
             let ammoType = player.activeWeapon;
-            if (ammoType === 'ammo_laser' && inventory.ammo_laser.qty > 0) {
+            if (ammoType === 'wpn_laser') {
                 player.isChargingLaser = true; player.laserChargeTimer++;
                 if (player.laserChargeTimer > 25) { 
-                    inventory.ammo_laser.qty--; player.heat += 40; if (player.heat >= player.maxHeat) player.overheated = true;
+                    player.heat += 40; if (player.heat >= player.maxHeat) player.overheated = true;
                     bullets.push({ x: player.x + activeWidth, y: player.y + activeHeight/2 - 5, w: 80, h: 10, speed: 25, vy: 0, dmg: (8 + player.damage), pierce: true, color: '#0ff', markedForDelete: false });
                     player.shootCooldown = 40; player.isChargingLaser = false; player.laserChargeTimer = 0; updateCombatHUD();
                 }
             } 
-            else if (ammoType === 'ammo_std' || inventory[ammoType].qty > 0) { 
-                if (ammoType !== 'ammo_std') inventory[ammoType].qty--; 
-                
-                let heatMap = {'ammo_std':8, 'ammo_rapid':18, 'ammo_spread':15, 'ammo_charm':25, 'ammo_rad':20, 'ammo_home':20, 'ammo_grow':20};
+            else { 
+                let heatMap = {'wpn_std':8, 'wpn_rapid':18, 'wpn_spread':15, 'wpn_charm':25, 'wpn_rad':20, 'wpn_home':20, 'wpn_grow':20};
                 player.heat += heatMap[ammoType] || 10; if (player.heat >= player.maxHeat) player.overheated = true;
                 
                 let py = player.y + activeHeight/2 - bh/2; let px = player.x + activeWidth; 
                 
-                if (ammoType === 'ammo_std') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 10, vy: 0, dmg: player.damage, color: '#ff0', markedForDelete: false }); player.shootCooldown = 20; } 
-                else if (ammoType === 'ammo_rapid') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 14, vy: 0, dmg: player.damage, color: '#f00', markedForDelete: false }); player.burstsRemaining = 2; player.burstDelay = 4; player.shootCooldown = 25; } 
-                else if (ammoType === 'ammo_spread') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 10, vy: 0, dmg: player.damage, color: '#f0f', markedForDelete: false }); bullets.push({ x: px, y: py, w: bw, h: bh, speed: 10, vy: -2.5, dmg: player.damage, color: '#f0f', markedForDelete: false }); bullets.push({ x: px, y: py, w: bw, h: bh, speed: 10, vy: 2.5, dmg: player.damage, color: '#f0f', markedForDelete: false }); player.shootCooldown = 20; } 
-                else if (ammoType === 'ammo_charm') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 8, vy: 0, dmg: player.damage, charm: true, color: '#f8f', markedForDelete: false }); player.shootCooldown = 25; }
-                else if (ammoType === 'ammo_rad') { bullets.push({ x: px, y: py, w: bw*2, h: bh*2, speed: 8, vy: 0, dmg: player.damage, isRad: true, color: '#0f0', markedForDelete: false }); player.shootCooldown = 30; }
-                else if (ammoType === 'ammo_home') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 12, vy: 0, dmg: player.damage, isHome: true, color: '#0ff', markedForDelete: false }); player.shootCooldown = 20; }
-                else if (ammoType === 'ammo_grow') { bullets.push({ x: px, y: py, w: bw*1.5, h: bh*1.5, speed: 10, vy: 0, dmg: player.damage, isGrow: true, color: '#fff', markedForDelete: false }); player.shootCooldown = 25; }
+                if (ammoType === 'wpn_std') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 10, vy: 0, dmg: player.damage, color: '#ff0', markedForDelete: false }); player.shootCooldown = 20; } 
+                else if (ammoType === 'wpn_rapid') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 14, vy: 0, dmg: player.damage, color: '#f00', markedForDelete: false }); player.burstsRemaining = 2; player.burstDelay = 4; player.shootCooldown = 25; } 
+                else if (ammoType === 'wpn_spread') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 10, vy: 0, dmg: player.damage, color: '#f0f', markedForDelete: false }); bullets.push({ x: px, y: py, w: bw, h: bh, speed: 10, vy: -2.5, dmg: player.damage, color: '#f0f', markedForDelete: false }); bullets.push({ x: px, y: py, w: bw, h: bh, speed: 10, vy: 2.5, dmg: player.damage, color: '#f0f', markedForDelete: false }); player.shootCooldown = 20; } 
+                else if (ammoType === 'wpn_charm') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 8, vy: 0, dmg: player.damage, charm: true, color: '#f8f', markedForDelete: false }); player.shootCooldown = 25; }
+                else if (ammoType === 'wpn_rad') { bullets.push({ x: px, y: py, w: bw*2, h: bh*2, speed: 8, vy: 0, dmg: player.damage, isRad: true, color: '#0f0', markedForDelete: false }); player.shootCooldown = 30; }
+                else if (ammoType === 'wpn_home') { bullets.push({ x: px, y: py, w: bw, h: bh, speed: 12, vy: 0, dmg: player.damage, isHome: true, color: '#0ff', markedForDelete: false }); player.shootCooldown = 20; }
+                else if (ammoType === 'wpn_grow') { bullets.push({ x: px, y: py, w: bw*1.5, h: bh*1.5, speed: 10, vy: 0, dmg: player.damage, isGrow: true, color: '#fff', markedForDelete: false }); player.shootCooldown = 25; }
                 updateCombatHUD();
             }
         } else { player.isChargingLaser = false; player.laserChargeTimer = 0; }
@@ -751,16 +1168,21 @@ function gameLoop() {
         // SPAWNING
         if (combatTimer > 0 && Math.random() < DEV.enemySpawnRate && enemies.filter(e=>!e.charmed && !e.markedForDelete).length < 10) {
             let progress = 1 - (combatTimer / maxCombatTimer);
-            let depLoc = mapGrid[currY][currX]; let arrLoc = mapGrid[targetY][targetX];
+            let depLoc = mapNodes[currentNode]; let arrLoc = mapNodes[targetNode];
             let spawnPool = [{f: 'anarchy', w: 1}];
             let depW = Math.max(0, 1 - progress * 1.5); let arrW = Math.max(0, progress * 1.5 - 0.5);
             [depLoc.m, depLoc.r].forEach(f => { let rep = factions[f].rep; if(rep < 0) spawnPool.push({f: f, w: depW * (Math.abs(rep)/50)}); });
             [arrLoc.m, arrLoc.r].forEach(f => { let rep = factions[f].rep; if(rep < 0) spawnPool.push({f: f, w: arrW * (Math.abs(rep)/50)}); });
             
+            let expiredLoans = activeLoans.filter(l => l.hops < 0);
+            expiredLoans.forEach(l => { spawnPool.push({f: l.faction, w: 4}); }); // Massive spawn weight for hunters
+
             let totalW = spawnPool.reduce((sum, p) => sum + p.w, 0); let roll = Math.random() * totalW; let chosenFac = 'anarchy';
             for(let p of spawnPool) { roll -= p.w; if (roll <= 0) { chosenFac = p.f; break; } }
 
             let types = ['grunt', 'sniper', 'brute', 'swarmer']; if (chosenFac !== 'anarchy') types.push('special');
+            if (expiredLoans.some(l => l.faction === chosenFac)) types = ['sniper', 'brute', 'special']; // Hunters send elite ships
+
             let bType = types[Math.floor(Math.random() * types.length)];
             
             let baseSpawnY = Math.random()*(canvas.height-30);
@@ -779,12 +1201,34 @@ function gameLoop() {
             enemies.push(e);
         }
 
-    } catch (error) { console.error("[CRITICAL] Physics Phase Error:", error); }
+    } catch (error) { 
+        console.error("[CRITICAL] Collision Phase Error:", error); 
+        triggerDebugger('Phase 2 Collision Catch', error, `Player HP: ${player.hp}, Active Shop: ${activeShop}`);
+    }
 
     // ==========================================
     // PHASE 2: ISOLATED COLLISIONS
     // ==========================================
     try {
+        if (player.invuln > 0) player.invuln--;
+
+        // Unified Damage Function: Strips power-ups before eating HP
+        function damagePlayer(dmg) {
+            if (player.invuln > 0) return; // Ignore if flashing
+            if (player.activeWeapon !== 'wpn_std') {
+                player.activeWeapon = 'wpn_std'; // Strip power-up
+                player.invuln = 60; // 1 second of invulnerability
+                screenShake = 15;
+                createExplosion(player.x + player.width/2, player.y + player.height/2, '#fff', 30, 8);
+            } else {
+                player.hp -= dmg; // Actually take damage
+                player.invuln = 60;
+                screenShake = 20;
+                createExplosion(player.x + player.width/2, player.y + player.height/2, '#f00', 30, 8);
+                if (player.hp <= 0) { endCombat(false); }
+            }
+            updateCombatHUD();
+        }
         particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life--; if(p.life <= 0) p.markedForDelete = true; });
 
         bullets.forEach(b => {
@@ -804,7 +1248,7 @@ function gameLoop() {
             eb.x -= eb.speed; if (eb.vy) eb.y += eb.vy;
             if (eb.x < 0 || eb.y < 0 || eb.y > canvas.height) eb.markedForDelete = true;
             else if (player.shieldTime <= 0 && eb.x < player.x + activeWidth && eb.x + 8 > player.x && eb.y < player.y + activeHeight && eb.y + 8 > player.y) { 
-                player.hp -= eb.dmg; eb.markedForDelete = true; screenShake = 20; createExplosion(player.x + activeWidth/2, player.y + activeHeight/2, '#f00', 30, 8); 
+                damagePlayer(eb.dmg); eb.markedForDelete = true; if (eb.isRad) player.slowTimer = 120; if (eb.isGrow) player.growTimer = 120;
                 if (eb.isRad) player.slowTimer = 120; if (eb.isGrow) player.growTimer = 120;
                 updateCombatHUD(); if (player.hp <= 0) { endCombat(false); return; } 
             }
@@ -931,7 +1375,7 @@ function gameLoop() {
 
             // ENEMY CRASHING INTO PLAYER
             if (!e.charmed && !e.markedForDelete && player.shieldTime <= 0 && e.x < player.x + activeWidth && e.x + e.width > player.x && e.y < player.y + activeHeight && e.y + e.height > player.y) {
-                player.hp -= (e.dmgMult || 1); screenShake = 20; createExplosion(player.x, player.y, '#f00', 30, 8); updateCombatHUD(); 
+                damagePlayer(e.dmgMult || 1); e.hp = 0; e.lastHp = 0; e.markedForDelete = true; createExplosion(e.x + e.width/2, e.y + e.height/2, e.color, 25, 8); spawnLoot(e.x+e.width/2, e.y+e.height/2); 
                 e.hp = 0; e.lastHp = 0; e.markedForDelete = true; createExplosion(e.x + e.width/2, e.y + e.height/2, e.color, 25, 8); spawnLoot(e.x+e.width/2, e.y+e.height/2);
                 if (player.hp <= 0) { endCombat(false); return; }
             }
@@ -971,7 +1415,22 @@ function gameLoop() {
 
         ctx.globalCompositeOperation = 'lighter';
 
-        let pColor = '#0f0'; if (player.hp <= player.maxHp / 2 && player.hp > 1) pColor = '#ff0'; if (player.hp === 1) pColor = '#f00';
+        let activeWeaponColors = {
+            'wpn_std': '#0f0', 'wpn_rapid': '#f00', 'wpn_spread': '#f0f', 
+            'wpn_laser': '#0ff', 'wpn_charm': '#f8f', 'wpn_rad': '#0f0', 
+            'wpn_home': '#0ff', 'wpn_grow': '#fff'
+        };
+        let pColor = activeWeaponColors[player.activeWeapon] || '#0f0';
+        
+        // Critical health color overrides ONLY apply if you have no powerup active
+        if (player.activeWeapon === 'wpn_std') {
+            if (player.hp <= player.maxHp / 2 && player.hp > 1) pColor = '#ff0'; 
+            if (player.hp === 1) pColor = '#f00';
+        }
+
+        // Apply a flickering transparency effect if you just got hit
+        if (player.invuln > 0 && Math.floor(combatTimer / 5) % 2 === 0) ctx.globalAlpha = 0.2;
+        
         let activeWidth = player.growTimer > 0 ? player.width * 2 : player.width;
         let activeHeight = player.growTimer > 0 ? player.height * 2 : player.height;
 
